@@ -17,12 +17,68 @@ export type TypedArray =
 
 export type Scalar = number | boolean | bigint;
 
+export interface NativeGenerator {
+  manualSeed(seed: number | bigint): NativeGenerator;
+  seed(): bigint;
+  initialSeed(): bigint;
+  device(): string;
+  getState(): NativeTensor;
+  setState(state: NativeTensor): void;
+}
+
+export interface NativeCudaStream {
+  synchronize(): void;
+  query(): boolean;
+  deviceIndex(): number;
+  streamId(): bigint;
+  priority(): number;
+  isCapturing(): boolean;
+  waitEvent(event: NativeCudaEvent): void;
+  waitStream(stream: NativeCudaStream): void;
+}
+
+export interface NativeCudaEvent {
+  record(stream?: NativeCudaStream | null): void;
+  wait(stream?: NativeCudaStream | null): void;
+  synchronize(): void;
+  query(): boolean;
+  elapsedTime(endEvent: NativeCudaEvent): number;
+}
+
+export interface NativeCudaGraph {
+  captureBegin(pool?: [bigint, bigint] | null): void;
+  captureEnd(): void;
+  replay(): void;
+  reset(): void;
+  pool(): [bigint, bigint];
+}
+
+export interface NativeAotiModel {
+  run(inputs: NativeTensor[]): NativeTensor[];
+  getMetadata(): Record<string, string>;
+  getCallSpec(): string[];
+  getConstantFqns(): string[];
+  dispose(): void;
+  isDisposed(): boolean;
+}
+
+export interface NativeJitModule {
+  forward(inputs: unknown[]): unknown;
+  runMethod(name: string, inputs: unknown[]): unknown;
+  to(deviceOrDtype: string): NativeJitModule;
+  eval(): NativeJitModule;
+  train(mode?: boolean): NativeJitModule;
+  dispose(): void;
+  isDisposed(): boolean;
+}
+
 export interface NativeTensorOptions {
   dtype?: DType;
   device?: string;
   layout?: string;
   pinMemory?: boolean;
   requiresGrad?: boolean;
+  generator?: NativeGenerator;
 }
 
 export interface NativeBackwardOptions {
@@ -59,6 +115,8 @@ export interface NativeTensor {
   device(): string;
   isContiguous(): boolean;
   isCuda(): boolean;
+  isPinned(): boolean;
+  pinMemory(): NativeTensor;
   requiresGrad(): boolean;
   setRequiresGrad(req?: boolean): NativeTensor;
   isLeaf(): boolean;
@@ -67,10 +125,13 @@ export interface NativeTensor {
   grad(): NativeTensor | null;
   setGrad(g: NativeTensor | null): void;
   gradFnName(): string | null;
+  registerHook(fn: (grad: NativeTensor) => NativeTensor | null | undefined | void): number;
+  removeHook(hookId: number): void;
   dataPtr(): bigint;
   storagePtr(): bigint;
   item(): Scalar | { real: number; imag: number };
   toTypedArray(): TypedArray;
+  toTypedArrayAsync(): Promise<TypedArray>;
   dataView(): TypedArray;
   copyFrom(src: NativeTensor, nonBlocking?: boolean): NativeTensor;
   detach(): NativeTensor;
@@ -80,7 +141,7 @@ export interface NativeTensor {
   to(opts: NativeToOptions): NativeTensor;
   backward(grad?: NativeTensor | null, opts?: NativeBackwardOptions): void;
   indexGet(indices: unknown[]): NativeTensor;
-  indexPut(indices: unknown[], value: NativeTensor | Scalar, accumulate?: boolean): NativeTensor;
+  indexPut(indices: unknown[], value: NativeTensor | Scalar): NativeTensor;
   equal(other: NativeTensor): boolean;
   formatString(): string;
 }
@@ -113,6 +174,14 @@ export interface CudaMemoryStats {
   maxAllocated: number;
   reserved: number;
   maxReserved: number;
+}
+
+export interface CudaDeviceProperties {
+  name: string;
+  major: number;
+  minor: number;
+  totalMemory: number;
+  multiProcessorCount: number;
 }
 
 export interface NativeFastOps {
@@ -222,6 +291,43 @@ export interface NativeFastOps {
     dilation?: number[],
     groups?: number
   ): NativeTensor;
+  conv3d(
+    input: NativeTensor,
+    weight: NativeTensor,
+    bias?: NativeTensor | null,
+    stride?: number[],
+    padding?: number[],
+    dilation?: number[],
+    groups?: number
+  ): NativeTensor;
+  convTranspose1d(
+    input: NativeTensor,
+    weight: NativeTensor,
+    bias?: NativeTensor | null,
+    stride?: number[],
+    padding?: number[],
+    outputPadding?: number[],
+    groups?: number,
+    dilation?: number[]
+  ): NativeTensor;
+  convTranspose2d(
+    input: NativeTensor,
+    weight: NativeTensor,
+    bias?: NativeTensor | null,
+    stride?: number[],
+    padding?: number[],
+    outputPadding?: number[],
+    groups?: number,
+    dilation?: number[]
+  ): NativeTensor;
+  upsample2d(
+    input: NativeTensor,
+    outputSize: number[],
+    mode?: string,
+    alignCorners?: boolean
+  ): NativeTensor;
+  pad(input: NativeTensor, pad: number[], mode?: string, value?: number | null): NativeTensor;
+  oneHot(input: NativeTensor, numClasses?: number): NativeTensor;
   maxPool2d(
     input: NativeTensor,
     kernelSize: number[],
@@ -310,6 +416,18 @@ export interface NativeFastOps {
     reduction?: string,
     beta?: number
   ): NativeTensor;
+  huberLoss(
+    input: NativeTensor,
+    target: NativeTensor,
+    reduction?: string,
+    delta?: number
+  ): NativeTensor;
+  cosineSimilarity(
+    x1: NativeTensor,
+    x2: NativeTensor,
+    dim?: number,
+    eps?: number
+  ): NativeTensor;
   bceWithLogitsLoss(
     input: NativeTensor,
     target: NativeTensor,
@@ -323,10 +441,76 @@ export interface NativeFastOps {
     reduction?: string,
     logTarget?: boolean
   ): NativeTensor;
+  lstm(
+    input: NativeTensor,
+    hx: NativeTensor[],
+    params: NativeTensor[],
+    hasBiases: boolean,
+    numLayers: number,
+    dropout: number,
+    train: boolean,
+    bidirectional: boolean,
+    batchFirst: boolean
+  ): { output: NativeTensor; hn: NativeTensor; cn: NativeTensor };
+  gru(
+    input: NativeTensor,
+    hx: NativeTensor,
+    params: NativeTensor[],
+    hasBiases: boolean,
+    numLayers: number,
+    dropout: number,
+    train: boolean,
+    bidirectional: boolean,
+    batchFirst: boolean
+  ): { output: NativeTensor; hn: NativeTensor };
+  rnn(
+    input: NativeTensor,
+    hx: NativeTensor,
+    params: NativeTensor[],
+    hasBiases: boolean,
+    numLayers: number,
+    dropout: number,
+    train: boolean,
+    bidirectional: boolean,
+    batchFirst: boolean,
+    nonlinearity?: string
+  ): { output: NativeTensor; hn: NativeTensor };
+  fusedAdamStep(
+    params: NativeTensor[],
+    grads: NativeTensor[],
+    expAvgs: NativeTensor[],
+    expAvgSqs: NativeTensor[],
+    maxExpAvgSqs: NativeTensor[],
+    stateSteps: NativeTensor[],
+    lr: number,
+    beta1: number,
+    beta2: number,
+    weightDecay: number,
+    eps: number,
+    amsgrad: boolean,
+    decoupled: boolean,
+    gradScale?: NativeTensor | null,
+    foundInf?: NativeTensor | null
+  ): void;
 }
 
 export interface NativeAddon {
   NativeTensor: new () => NativeTensor;
+  NativeGenerator: new (device?: string) => NativeGenerator;
+  NativeCudaStream?: new (device?: number, priority?: number) => NativeCudaStream;
+  NativeCudaEvent?: new (
+    enableTiming?: boolean,
+    blocking?: boolean,
+    interprocess?: boolean
+  ) => NativeCudaEvent;
+  NativeCudaGraph?: new (keepGraph?: boolean) => NativeCudaGraph;
+  NativeAotiModel: new (
+    packagePath: string,
+    modelName?: string,
+    deviceIndex?: number
+  ) => NativeAotiModel;
+  NativeJitModule: new (path: string, device?: string) => NativeJitModule;
+
   fromTypedArray(
     ta: TypedArray,
     shape?: number[] | null,
@@ -368,6 +552,10 @@ export interface NativeAddon {
     forwardFn: (ctx: Record<string, unknown>) => (NativeTensor | null)[],
     backwardFn: (ctx: Record<string, unknown>, gradOutputs: (NativeTensor | null)[]) => (NativeTensor | null)[]
   ): (NativeTensor | null)[];
+  enterDualLevel(): number;
+  exitDualLevel(level: number): void;
+  makeDual(primal: NativeTensor, tangent: NativeTensor, level: number): NativeTensor;
+  unpackDual(dual: NativeTensor, level: number): { primal: NativeTensor; tangent: NativeTensor | null };
 
   cudaIsAvailable(): boolean;
   cudaDeviceCount(): number;
@@ -375,8 +563,18 @@ export interface NativeAddon {
   cudaSetDevice(index: number): void;
   cudaSynchronize(index?: number): void;
   cudaEmptyCache(): void;
+  cudaSetMemoryFraction(fraction: number, index?: number): void;
+  cudaResetPeakMemoryStats(index?: number): void;
   cudaMemoryStats(index?: number): CudaMemoryStats;
   cudaDeviceName(index?: number): string;
+  cudaDeviceProperties(index?: number): CudaDeviceProperties;
+  cudaManualSeed(seed: number | bigint): void;
+  cudaManualSeedAll(seed: number | bigint): void;
+  cudaCurrentStream(index?: number): NativeCudaStream;
+  cudaDefaultStream(index?: number): NativeCudaStream;
+  cudaSetStream(stream: NativeCudaStream): void;
+  cudaGraphPoolHandle(): [bigint, bigint];
+  mpsIsAvailable(): boolean;
   manualSeed(seed: number | bigint): void;
   getNumThreads(): number;
   setNumThreads(n: number): void;

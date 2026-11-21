@@ -1,5 +1,6 @@
 import type { DType } from './dtype.js';
 import { normalizeDevice, type DeviceLike } from './device.js';
+import type { Generator } from './generator.js';
 import {
   native,
   type NativeTensor,
@@ -17,6 +18,7 @@ export interface TensorOptions {
   layout?: string;
   pinMemory?: boolean;
   requiresGrad?: boolean;
+  generator?: Generator;
 }
 
 function toNativeOpts(opts?: TensorOptions): NativeTensorOptions | undefined {
@@ -27,6 +29,7 @@ function toNativeOpts(opts?: TensorOptions): NativeTensorOptions | undefined {
     layout: opts.layout,
     pinMemory: opts.pinMemory,
     requiresGrad: opts.requiresGrad,
+    generator: opts.generator?._native,
   };
 }
 

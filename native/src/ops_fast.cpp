@@ -10,11 +10,28 @@
 #include <vector>
 
 #include "norch/convert.hpp"
+#include "norch/generator_wrap.hpp"
 #include "norch/tensor_wrap.hpp"
 
 namespace norch {
 
 namespace {
+
+[[nodiscard]] std::optional<at::Generator> ParseOptionalGenerator(
+    Napi::Env env,
+    const Napi::Value& opts_val) {
+  if (!opts_val.IsObject() || opts_val.IsNull()) {
+    return std::nullopt;
+  }
+  const auto obj = opts_val.As<Napi::Object>();
+  if (obj.Has("generator")) {
+    const auto g = obj.Get("generator");
+    if (!g.IsUndefined() && !g.IsNull()) {
+      return GeneratorWrap::UnwrapGenerator(env, g);
+    }
+  }
+  return std::nullopt;
+}
 
 [[nodiscard]] std::optional<std::vector<std::int64_t>> ParseOptionalIntArray(
     Napi::Env env,
@@ -239,7 +256,8 @@ Napi::Value RandOp(const Napi::CallbackInfo& info) {
     bool requires_grad = false;
     const auto opts = info.Length() >= 2 ? ParseTensorOptions(env, info[1], &requires_grad)
                                          : at::TensorOptions().dtype(at::kFloat);
-    return WrapFactory(env, at::rand(shape, opts), requires_grad);
+    const auto gen = info.Length() >= 2 ? ParseOptionalGenerator(env, info[1]) : std::nullopt;
+    return WrapFactory(env, at::rand(shape, gen, opts), requires_grad);
   });
 }
 
@@ -250,7 +268,8 @@ Napi::Value RandnOp(const Napi::CallbackInfo& info) {
     bool requires_grad = false;
     const auto opts = info.Length() >= 2 ? ParseTensorOptions(env, info[1], &requires_grad)
                                          : at::TensorOptions().dtype(at::kFloat);
-    return WrapFactory(env, at::randn(shape, opts), requires_grad);
+    const auto gen = info.Length() >= 2 ? ParseOptionalGenerator(env, info[1]) : std::nullopt;
+    return WrapFactory(env, at::randn(shape, gen, opts), requires_grad);
   });
 }
 
@@ -262,14 +281,16 @@ Napi::Value RandintOp(const Napi::CallbackInfo& info) {
     const auto shape = ParseIntArray(env, info[2]);
     bool requires_grad = false;
     auto opts = at::TensorOptions().dtype(c10::ScalarType::Long);
+    std::optional<at::Generator> gen = std::nullopt;
     if (info.Length() >= 4 && info[3].IsObject() && !info[3].IsNull()) {
       const auto obj = info[3].As<Napi::Object>();
       opts = ParseTensorOptions(env, info[3], &requires_grad);
+      gen = ParseOptionalGenerator(env, info[3]);
       if (!obj.Has("dtype") || obj.Get("dtype").IsUndefined()) {
         opts = opts.dtype(c10::ScalarType::Long);
       }
     }
-    return WrapFactory(env, at::randint(low, high, shape, opts), requires_grad);
+    return WrapFactory(env, at::randint(low, high, shape, gen, opts), requires_grad);
   });
 }
 
@@ -279,14 +300,16 @@ Napi::Value RandpermOp(const Napi::CallbackInfo& info) {
     const auto n = info[0].As<Napi::Number>().Int64Value();
     bool requires_grad = false;
     auto opts = at::TensorOptions().dtype(c10::ScalarType::Long);
+    std::optional<at::Generator> gen = std::nullopt;
     if (info.Length() >= 2 && info[1].IsObject() && !info[1].IsNull()) {
       const auto obj = info[1].As<Napi::Object>();
       opts = ParseTensorOptions(env, info[1], &requires_grad);
+      gen = ParseOptionalGenerator(env, info[1]);
       if (!obj.Has("dtype") || obj.Get("dtype").IsUndefined()) {
         opts = opts.dtype(c10::ScalarType::Long);
       }
     }
-    return WrapFactory(env, at::randperm(n, opts), requires_grad);
+    return WrapFactory(env, at::randperm(n, gen, opts), requires_grad);
   });
 }
 
@@ -1279,6 +1302,272 @@ Napi::Value KlDivOp(const Napi::CallbackInfo& info) {
   });
 }
 
+Napi::Value HuberLossOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& target = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto reduction = info.Length() >= 3
+                               ? ParseReductionMode(env, info[2])
+                               : static_cast<std::int64_t>(at::Reduction::Mean);
+    const double delta = info.Length() >= 4 ? info[3].As<Napi::Number>().DoubleValue() : 1.0;
+    return TensorWrap::NewInstance(env, at::huber_loss(input, target, reduction, delta));
+  });
+}
+
+Napi::Value CosineSimilarityOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& x1 = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& x2 = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto dim = info.Length() >= 3 ? info[2].As<Napi::Number>().Int64Value() : 1;
+    const double eps = info.Length() >= 4 ? info[3].As<Napi::Number>().DoubleValue() : 1e-8;
+    return TensorWrap::NewInstance(env, at::cosine_similarity(x1, x2, dim, eps));
+  });
+}
+
+Napi::Value Conv3dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& weight = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto bias = info.Length() >= 3 ? ParseOptionalTensor(env, info[2]) : std::nullopt;
+    const auto stride = (info.Length() >= 4 && !info[3].IsUndefined())
+                            ? ParseIntArray(env, info[3])
+                            : std::vector<std::int64_t>{1, 1, 1};
+    const auto padding = (info.Length() >= 5 && !info[4].IsUndefined())
+                             ? ParseIntArray(env, info[4])
+                             : std::vector<std::int64_t>{0, 0, 0};
+    const auto dilation = (info.Length() >= 6 && !info[5].IsUndefined())
+                              ? ParseIntArray(env, info[5])
+                              : std::vector<std::int64_t>{1, 1, 1};
+    const auto groups = info.Length() >= 7 ? info[6].As<Napi::Number>().Int64Value() : 1;
+    return TensorWrap::NewInstance(
+        env, at::conv3d(input, weight, bias, stride, padding, dilation, groups));
+  });
+}
+
+Napi::Value ConvTranspose1dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& weight = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto bias = info.Length() >= 3 ? ParseOptionalTensor(env, info[2]) : std::nullopt;
+    const auto stride = (info.Length() >= 4 && !info[3].IsUndefined())
+                            ? ParseIntArray(env, info[3])
+                            : std::vector<std::int64_t>{1};
+    const auto padding = (info.Length() >= 5 && !info[4].IsUndefined())
+                             ? ParseIntArray(env, info[4])
+                             : std::vector<std::int64_t>{0};
+    const auto output_padding = (info.Length() >= 6 && !info[5].IsUndefined())
+                                    ? ParseIntArray(env, info[5])
+                                    : std::vector<std::int64_t>{0};
+    const auto groups = info.Length() >= 7 ? info[6].As<Napi::Number>().Int64Value() : 1;
+    const auto dilation = (info.Length() >= 8 && !info[7].IsUndefined())
+                              ? ParseIntArray(env, info[7])
+                              : std::vector<std::int64_t>{1};
+    return TensorWrap::NewInstance(
+        env,
+        at::conv_transpose1d(
+            input, weight, bias, stride, padding, output_padding, groups, dilation));
+  });
+}
+
+Napi::Value ConvTranspose2dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& weight = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto bias = info.Length() >= 3 ? ParseOptionalTensor(env, info[2]) : std::nullopt;
+    const auto stride = (info.Length() >= 4 && !info[3].IsUndefined())
+                            ? ParseIntArray(env, info[3])
+                            : std::vector<std::int64_t>{1, 1};
+    const auto padding = (info.Length() >= 5 && !info[4].IsUndefined())
+                             ? ParseIntArray(env, info[4])
+                             : std::vector<std::int64_t>{0, 0};
+    const auto output_padding = (info.Length() >= 6 && !info[5].IsUndefined())
+                                    ? ParseIntArray(env, info[5])
+                                    : std::vector<std::int64_t>{0, 0};
+    const auto groups = info.Length() >= 7 ? info[6].As<Napi::Number>().Int64Value() : 1;
+    const auto dilation = (info.Length() >= 8 && !info[7].IsUndefined())
+                              ? ParseIntArray(env, info[7])
+                              : std::vector<std::int64_t>{1, 1};
+    return TensorWrap::NewInstance(
+        env,
+        at::conv_transpose2d(
+            input, weight, bias, stride, padding, output_padding, groups, dilation));
+  });
+}
+
+Napi::Value Upsample2dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto out_size = ParseIntArray(env, info[1]);
+    const std::string mode =
+        (info.Length() >= 3 && info[2].IsString()) ? info[2].As<Napi::String>().Utf8Value() : "nearest";
+    const bool align_corners = info.Length() >= 4 && info[3].ToBoolean().Value();
+    if (mode == "nearest") {
+      return TensorWrap::NewInstance(env, at::upsample_nearest2d(input, out_size));
+    }
+    if (mode == "bilinear") {
+      return TensorWrap::NewInstance(env, at::upsample_bilinear2d(input, out_size, align_corners));
+    }
+    if (mode == "bicubic") {
+      return TensorWrap::NewInstance(env, at::upsample_bicubic2d(input, out_size, align_corners));
+    }
+    throw Napi::RangeError::New(env, "Unsupported upsample mode: " + mode);
+  });
+}
+
+Napi::Value PadOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto pad = ParseIntArray(env, info[1]);
+    const std::string mode =
+        (info.Length() >= 3 && info[2].IsString()) ? info[2].As<Napi::String>().Utf8Value() : "constant";
+    const auto value = info.Length() >= 4 ? ParseOptionalDouble(info[3]) : std::nullopt;
+    return TensorWrap::NewInstance(env, at::pad(input, pad, mode, value));
+  });
+}
+
+Napi::Value OneHotOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto num_classes = info.Length() >= 2 ? info[1].As<Napi::Number>().Int64Value() : -1;
+    return TensorWrap::NewInstance(env, at::one_hot(input, num_classes));
+  });
+}
+
+Napi::Value LstmOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto hx = ParseTensorList(env, info[1]);
+    const auto params = ParseTensorList(env, info[2]);
+    const bool has_biases = info[3].ToBoolean().Value();
+    const auto num_layers = info[4].As<Napi::Number>().Int64Value();
+    const double dropout = info[5].As<Napi::Number>().DoubleValue();
+    const bool train = info[6].ToBoolean().Value();
+    const bool bidirectional = info[7].ToBoolean().Value();
+    const bool batch_first = info[8].ToBoolean().Value();
+    auto [output, hn, cn] =
+        at::lstm(input, hx, params, has_biases, num_layers, dropout, train, bidirectional, batch_first);
+    auto res = Napi::Object::New(env);
+    res.Set("output", TensorWrap::NewInstance(env, std::move(output)));
+    res.Set("hn", TensorWrap::NewInstance(env, std::move(hn)));
+    res.Set("cn", TensorWrap::NewInstance(env, std::move(cn)));
+    return res;
+  });
+}
+
+Napi::Value GruOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& hx = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto params = ParseTensorList(env, info[2]);
+    const bool has_biases = info[3].ToBoolean().Value();
+    const auto num_layers = info[4].As<Napi::Number>().Int64Value();
+    const double dropout = info[5].As<Napi::Number>().DoubleValue();
+    const bool train = info[6].ToBoolean().Value();
+    const bool bidirectional = info[7].ToBoolean().Value();
+    const bool batch_first = info[8].ToBoolean().Value();
+    auto [output, hn] =
+        at::gru(input, hx, params, has_biases, num_layers, dropout, train, bidirectional, batch_first);
+    auto res = Napi::Object::New(env);
+    res.Set("output", TensorWrap::NewInstance(env, std::move(output)));
+    res.Set("hn", TensorWrap::NewInstance(env, std::move(hn)));
+    return res;
+  });
+}
+
+Napi::Value RnnOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& hx = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto params = ParseTensorList(env, info[2]);
+    const bool has_biases = info[3].ToBoolean().Value();
+    const auto num_layers = info[4].As<Napi::Number>().Int64Value();
+    const double dropout = info[5].As<Napi::Number>().DoubleValue();
+    const bool train = info[6].ToBoolean().Value();
+    const bool bidirectional = info[7].ToBoolean().Value();
+    const bool batch_first = info[8].ToBoolean().Value();
+    const std::string nonlinearity =
+        (info.Length() >= 10 && info[9].IsString()) ? info[9].As<Napi::String>().Utf8Value() : "tanh";
+    auto [output, hn] =
+        (nonlinearity == "relu")
+            ? at::rnn_relu(
+                  input, hx, params, has_biases, num_layers, dropout, train, bidirectional, batch_first)
+            : at::rnn_tanh(
+                  input, hx, params, has_biases, num_layers, dropout, train, bidirectional, batch_first);
+    auto res = Napi::Object::New(env);
+    res.Set("output", TensorWrap::NewInstance(env, std::move(output)));
+    res.Set("hn", TensorWrap::NewInstance(env, std::move(hn)));
+    return res;
+  });
+}
+
+Napi::Value FusedAdamStepOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    auto params = ParseTensorList(env, info[0]);
+    auto grads = ParseTensorList(env, info[1]);
+    auto exp_avgs = ParseTensorList(env, info[2]);
+    auto exp_avg_sqs = ParseTensorList(env, info[3]);
+    auto max_exp_avg_sqs = ParseTensorList(env, info[4]);
+    auto state_steps = ParseTensorList(env, info[5]);
+    const double lr = info[6].As<Napi::Number>().DoubleValue();
+    const double beta1 = info[7].As<Napi::Number>().DoubleValue();
+    const double beta2 = info[8].As<Napi::Number>().DoubleValue();
+    const double weight_decay = info[9].As<Napi::Number>().DoubleValue();
+    const double eps = info[10].As<Napi::Number>().DoubleValue();
+    const bool amsgrad = info[11].ToBoolean().Value();
+    const bool decoupled = info[12].ToBoolean().Value();
+    const auto grad_scale = info.Length() >= 14 ? ParseOptionalTensor(env, info[13]) : std::nullopt;
+    const auto found_inf = info.Length() >= 15 ? ParseOptionalTensor(env, info[14]) : std::nullopt;
+    if (decoupled) {
+      at::_fused_adamw_(
+          params,
+          grads,
+          exp_avgs,
+          exp_avg_sqs,
+          max_exp_avg_sqs,
+          state_steps,
+          lr,
+          beta1,
+          beta2,
+          weight_decay,
+          eps,
+          amsgrad,
+          /*maximize=*/false,
+          grad_scale,
+          found_inf);
+    } else {
+      at::_fused_adam_(
+          params,
+          grads,
+          exp_avgs,
+          exp_avg_sqs,
+          max_exp_avg_sqs,
+          state_steps,
+          lr,
+          beta1,
+          beta2,
+          weight_decay,
+          eps,
+          amsgrad,
+          /*maximize=*/false,
+          grad_scale,
+          found_inf);
+    }
+    return env.Undefined();
+  });
+}
+
 }  // namespace
 
 void RegisterFastOps(Napi::Env env, Napi::Object exports) {
@@ -1394,6 +1683,18 @@ void RegisterFastOps(Napi::Env env, Napi::Object exports) {
   ops.Set("smoothL1Loss", Napi::Function::New(env, SmoothL1LossOp));
   ops.Set("bceWithLogitsLoss", Napi::Function::New(env, BceWithLogitsLossOp));
   ops.Set("klDiv", Napi::Function::New(env, KlDivOp));
+  ops.Set("huberLoss", Napi::Function::New(env, HuberLossOp));
+  ops.Set("cosineSimilarity", Napi::Function::New(env, CosineSimilarityOp));
+  ops.Set("conv3d", Napi::Function::New(env, Conv3dOp));
+  ops.Set("convTranspose1d", Napi::Function::New(env, ConvTranspose1dOp));
+  ops.Set("convTranspose2d", Napi::Function::New(env, ConvTranspose2dOp));
+  ops.Set("upsample2d", Napi::Function::New(env, Upsample2dOp));
+  ops.Set("pad", Napi::Function::New(env, PadOp));
+  ops.Set("oneHot", Napi::Function::New(env, OneHotOp));
+  ops.Set("lstm", Napi::Function::New(env, LstmOp));
+  ops.Set("gru", Napi::Function::New(env, GruOp));
+  ops.Set("rnn", Napi::Function::New(env, RnnOp));
+  ops.Set("fusedAdamStep", Napi::Function::New(env, FusedAdamStepOp));
 
   exports.Set("fast", ops);
 }

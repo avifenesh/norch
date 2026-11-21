@@ -10,7 +10,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(NORCH_STRICT_WARNINGS "Enable strict compiler warnings with -Werror" ON)
 option(NORCH_SANITIZERS "Enable ASan/UBSan for test builds" OFF)
 
-# Required inputs passed by scripts/build-native.mjs
 if(NOT DEFINED LIBTORCH_DIR)
   if(DEFINED ENV{LIBTORCH})
     set(LIBTORCH_DIR "$ENV{LIBTORCH}")
@@ -42,9 +41,32 @@ find_library(C10_CUDA_LIB c10_cuda PATHS "${TORCH_LIB_DIR}" NO_DEFAULT_PATH)
 find_library(TORCH_GLOBAL_DEPS_LIB torch_global_deps PATHS "${TORCH_LIB_DIR}" NO_DEFAULT_PATH)
 
 set(NORCH_HAS_CUDA OFF)
+set(NORCH_CUDA_INCLUDE_DIR "")
+set(NORCH_CUDART_LIB "")
+set(NORCH_EXTRA_RPATHS "")
+
 if(TORCH_CUDA_LIB AND C10_CUDA_LIB)
-  set(NORCH_HAS_CUDA ON)
-  message(STATUS "norch: CUDA libtorch detected (${TORCH_CUDA_LIB})")
+  file(GLOB NVIDIA_CU_INCLUDE_HINTS "${LIBTORCH_DIR}/../nvidia/cu*/include" "${LIBTORCH_DIR}/../nvidia/cuda_runtime/include")
+  find_path(CUDA_RUNTIME_INCLUDE_DIR cuda_runtime_api.h
+    HINTS ${NVIDIA_CU_INCLUDE_HINTS} /usr/local/cuda/include /usr/include
+  )
+  file(GLOB NVIDIA_CU_LIB_HINTS "${LIBTORCH_DIR}/../nvidia/cu*/lib" "${LIBTORCH_DIR}/../nvidia/cuda_runtime/lib")
+  find_library(CUDART_LIB
+    NAMES cudart libcudart.so.13 libcudart.so.12
+    HINTS ${NVIDIA_CU_LIB_HINTS} /usr/local/cuda/lib64 /usr/lib/x86_64-linux-gnu
+  )
+  if(CUDA_RUNTIME_INCLUDE_DIR)
+    set(NORCH_HAS_CUDA ON)
+    set(NORCH_CUDA_INCLUDE_DIR "${CUDA_RUNTIME_INCLUDE_DIR}")
+    if(CUDART_LIB)
+      set(NORCH_CUDART_LIB "${CUDART_LIB}")
+      get_filename_component(CUDART_DIR "${CUDART_LIB}" DIRECTORY)
+      list(APPEND NORCH_EXTRA_RPATHS "${CUDART_DIR}")
+    endif()
+    message(STATUS "norch: CUDA libtorch detected (${TORCH_CUDA_LIB}, headers=${NORCH_CUDA_INCLUDE_DIR}, cudart=${NORCH_CUDART_LIB})")
+  else()
+    message(STATUS "norch: libtorch_cuda found but cuda_runtime_api.h missing; building without CUDA runtime headers")
+  endif()
 else()
   message(STATUS "norch: CPU-only libtorch detected")
 endif()
@@ -53,21 +75,26 @@ set(NORCH_SOURCES
   native/src/addon.cpp
   native/src/addon_state.cpp
   native/src/tensor_wrap.cpp
+  native/src/generator_wrap.cpp
   native/src/convert.cpp
   native/src/dispatcher.cpp
   native/src/autograd.cpp
   native/src/ops_fast.cpp
   native/src/cuda.cpp
+  native/src/export_runner.cpp
 )
 
 add_library(norch_native SHARED ${NORCH_SOURCES})
+
+set(NORCH_RPATH_LIST "${TORCH_LIB_DIR}" ${NORCH_EXTRA_RPATHS})
+list(REMOVE_DUPLICATES NORCH_RPATH_LIST)
 
 set_target_properties(norch_native PROPERTIES
   PREFIX ""
   SUFFIX ".node"
   POSITION_INDEPENDENT_CODE ON
-  BUILD_RPATH "${TORCH_LIB_DIR}"
-  INSTALL_RPATH "${TORCH_LIB_DIR}"
+  BUILD_RPATH "${NORCH_RPATH_LIST}"
+  INSTALL_RPATH "${NORCH_RPATH_LIST}"
   BUILD_RPATH_USE_ORIGIN ON
 )
 
@@ -79,6 +106,7 @@ target_include_directories(norch_native SYSTEM PRIVATE
   "${NODE_INCLUDE_DIR}"
   "${NODE_ADDON_API_DIR}"
   ${TORCH_INCLUDE_DIRS}
+  $<$<BOOL:${NORCH_HAS_CUDA}>:${NORCH_CUDA_INCLUDE_DIR}>
 )
 
 target_compile_definitions(norch_native PRIVATE
@@ -112,7 +140,6 @@ if(NORCH_SANITIZERS)
   target_link_options(norch_native PRIVATE -fsanitize=address,undefined)
 endif()
 
-# Prefer mold, fallback to lld
 find_program(MOLD_LINKER mold)
 find_program(LLD_LINKER ld.lld)
 if(MOLD_LINKER)
@@ -125,8 +152,6 @@ if(APPLE)
   target_link_options(norch_native PRIVATE -undefined dynamic_lookup)
   target_link_libraries(norch_native PRIVATE "${TORCH_LIB}" "${TORCH_CPU_LIB}" "${C10_LIB}")
 else()
-  # Keep libtorch_cuda and libtorch_global_deps linked with --no-as-needed so
-  # static CUDA kernel registrations run when the addon loads.
   set(NORCH_TORCH_LINK_LIBS
     -Wl,--no-as-needed
     "${TORCH_LIB}"
@@ -135,6 +160,9 @@ else()
   )
   if(NORCH_HAS_CUDA)
     list(APPEND NORCH_TORCH_LINK_LIBS "${TORCH_CUDA_LIB}" "${C10_CUDA_LIB}")
+    if(NORCH_CUDART_LIB)
+      list(APPEND NORCH_TORCH_LINK_LIBS "${NORCH_CUDART_LIB}")
+    endif()
   endif()
   if(TORCH_GLOBAL_DEPS_LIB)
     list(APPEND NORCH_TORCH_LINK_LIBS "${TORCH_GLOBAL_DEPS_LIB}")
@@ -143,7 +171,6 @@ else()
   target_link_libraries(norch_native PRIVATE ${NORCH_TORCH_LINK_LIBS})
 endif()
 
-# Precompile heavy ATen/torch headers only for files that include them
 target_precompile_headers(norch_native PRIVATE
   <ATen/ATen.h>
   <napi.h>

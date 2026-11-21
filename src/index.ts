@@ -1,10 +1,14 @@
 import * as dtypes from './dtype.js';
 import * as deviceMod from './device.js';
+import * as generatorMod from './generator.js';
 import * as memoryMod from './memory.js';
 import * as tensorMod from './tensor.js';
 import * as opsMod from './ops.js';
 import * as autogradMod from './autograd.js';
 import * as cudaMod from './cuda.js';
+import * as linalgMod from './linalg.js';
+import * as fftMod from './fft.js';
+import * as exportMod from './export.js';
 import * as nn from './nn/index.js';
 import * as optim from './optim/index.js';
 import * as utils from './utils/index.js';
@@ -12,11 +16,15 @@ import * as amp from './amp.js';
 
 export * from './dtype.js';
 export * from './device.js';
+export * from './generator.js';
 export * from './memory.js';
 export * from './tensor.js';
 export * from './ops.js';
 export * from './autograd.js';
 export * from './cuda.js';
+export * from './linalg.js';
+export * from './fft.js';
+export * from './export.js';
 export { nn, optim, utils, amp };
 export { functional as F } from './functional.js';
 
@@ -44,10 +52,12 @@ export const torch = {
   float8_e4m3fn: dtypes.float8_e4m3fn,
   float8_e5m2: dtypes.float8_e5m2,
 
-  // Device & Runtime
+  // Device, Generator & Runtime
   Device: deviceMod.Device,
   device: deviceMod.device,
+  Generator: generatorMod.Generator,
   cuda: cudaMod.cuda,
+  mps: cudaMod.mps,
   manualSeed: cudaMod.manualSeed,
   getNumThreads: cudaMod.getNumThreads,
   setNumThreads: cudaMod.setNumThreads,
@@ -114,6 +124,8 @@ export const torch = {
   abs: opsMod.abs,
   allclose: opsMod.allclose,
   ops: opsMod.ops,
+  linalg: linalgMod.linalg,
+  fft: fftMod.fft,
 
   // Autograd
   isGradEnabled: autogradMod.isGradEnabled,
@@ -131,8 +143,15 @@ export const torch = {
   grad: autogradMod.grad,
   AutogradContext: autogradMod.AutogradContext,
   AutogradFunction: autogradMod.AutogradFunction,
+  forwardAD: autogradMod.forwardAD,
 
-  // High-level modules
+  // Exported model runners
+  AotiModel: exportMod.AotiModel,
+  loadAotiModel: exportMod.loadAotiModel,
+  JitModule: exportMod.JitModule,
+  loadJitModule: exportMod.loadJitModule,
+
+  // High-level modules & checkpoints
   nn,
   F: nn.F,
   optim,
@@ -140,6 +159,8 @@ export const torch = {
   amp,
   save: utils.saveSafetensors,
   load: utils.loadSafetensors,
+  saveCheckpoint: utils.saveCheckpoint,
+  loadCheckpoint: utils.loadCheckpoint,
 };
 
 export namespace torch {
@@ -147,6 +168,7 @@ export namespace torch {
   export type DType = dtypes.DType;
   export type Device = deviceMod.Device;
   export type DeviceLike = deviceMod.DeviceLike;
+  export type Generator = generatorMod.Generator;
   export type TensorOptions = opsMod.TensorOptions;
   export type Parameter = nn.Parameter;
   export type Module = nn.Module;

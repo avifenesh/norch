@@ -4,10 +4,10 @@ PyTorch equivalent for Node.js backed directly by `libtorch` (`c10`, `ATen`, and
 
 ## Architecture
 
-- **Native addon (`native/`)**: C++23 Node-API (`node-addon-api`) built with CMake, Ninja, and `mold`. Wraps `at::Tensor`, `c10::Dispatcher`, `torch::autograd` (`backward`, `grad`, `NoGradGuard`, `InferenceMode`, `autocast`, custom JS `AutogradFunction`), CUDA runtime/allocator controls, and unboxed C++ fast paths for core kernels.
-- **Full ATen coverage (`src/generated/aten_ops.ts`)**: `scripts/codegen.mjs` introspects the live `c10::Dispatcher` registry from `libtorch` and generates typed `torch.ops.aten.*` wrappers for over 1,000 public ATen operators routed through `callBoxed` and `c10::IValue`.
-- **TypeScript training layer (`src/`)**: `Tensor`, `nn.Module`, `Parameter`, standard layers (`Linear`, `Conv1d`, `Conv2d`, `BatchNorm1d/2d`, `LayerNorm`, `RMSNorm`, `GroupNorm`, `Embedding`, `Dropout`, `MultiheadAttention`, `TransformerBlock` over fused `scaledDotProductAttention`), losses, optimizers (`SGD`, `Adam`, `AdamW`), LR schedulers (`StepLR`, `CosineAnnealingLR`, `LinearLR`), `amp.GradScaler`, activation checkpointing (`utils.checkpoint`), gradient clipping, `DataLoader`, and binary `safetensors` I/O (`torch.save` / `torch.load`).
-- **Deterministic memory management**: Native `Symbol.dispose` (`using t = torch.randn(...)`), `torch.tidy()` / `torch.scope()` arenas, V8 external memory accounting (`napi_adjust_external_memory` deduplicated per `c10::StorageImpl*`), and `ObjectWrap` finalizers.
+- **Native addon (`native/`)**: C++23 Node-API (`node-addon-api`) built with CMake, Ninja, and `mold`. Wraps `at::Tensor`, `at::Generator`, `c10::Dispatcher`, `torch::autograd` (`backward`, `grad`, `NoGradGuard`, `InferenceMode`, `autocast`, tensor backward hooks, custom JS `AutogradFunction` with `markDirty`/`needsInputGrad`/`SavedVariable`, and forward-mode AD `forwardAD`), CUDA runtime (`Stream`, `Event`, `CUDAGraph`, allocator controls, pinned memory), `AOTIModelPackageLoader` (`.pt2`) and `torch::jit::load` (`.pt`), plus unboxed C++ fast paths for core kernels including fused `Adam`/`AdamW`, `LSTM`/`GRU`/`RNN`, `Conv1d/2d/3d`, transposed convolutions, and `scaledDotProductAttention`.
+- **Full ATen coverage (`src/generated/aten_ops.ts`)**: `scripts/codegen.mjs` introspects 3,120 live `c10::Dispatcher` schemas from `libtorch` and generates typed `torch.ops.aten.*` wrappers covering 1,016 public ATen operators (1,332 typed overloads) routed through `callBoxed` and `c10::IValue`.
+- **TypeScript training layer (`src/`)**: `Tensor`, `Generator`, `nn.Module` (with weight-tying preservation across `.to()` and forward pre/post hooks), `Parameter`, standard layers (`Linear`, `Conv1d/2d/3d`, `ConvTranspose1d/2d`, `Upsample`, `LSTM`/`GRU`/`RNN`, `BatchNorm1d/2d`, `LayerNorm`, `RMSNorm`, `GroupNorm`, `Embedding`, `Dropout`, `MultiheadAttention`, `TransformerBlock`), `linalg`, `fft`, losses, optimizers (`SGD`, fused `Adam`/`AdamW`, `RMSprop`) with `stateDict`/`loadStateDict`, LR schedulers (`StepLR`, `CosineAnnealingLR`, `LinearLR`, `OneCycleLR`, `SequentialLR`, `ReduceLROnPlateau`), `amp.GradScaler`, activation checkpointing (`utils.checkpoint`), gradient clipping, `DataLoader` (samplers, `pinMemory`, sync/async iteration), binary `safetensors` I/O (`torch.save`/`torch.load`), and unified training checkpoints (`torch.saveCheckpoint`/`torch.loadCheckpoint`).
+- **Deterministic memory management**: Native `Symbol.dispose` (`using t = torch.randn(...)`), `torch.tidy()` / `torch.scope()` arenas, V8 external memory accounting (`napi_adjust_external_memory` deduplicated per `c10::StorageImpl*`), non-blocking `toTypedArrayAsync()`, and `ObjectWrap` finalizers.
 
 ## Requirements
 
@@ -15,13 +15,14 @@ PyTorch equivalent for Node.js backed directly by `libtorch` (`c10`, `ATen`, and
 - C++23 compiler (GCC 14+ or Clang 19+), CMake >= 3.25, Ninja
 - `libtorch` (CPU or CUDA). Set `LIBTORCH=/path/to/libtorch` or let `scripts/find-libtorch.mjs` detect an existing Python PyTorch installation.
 
-## Build and Test
+## Build, Test, and Benchmark
 
 ```bash
 npm install
 npm run build        # compiles native/ -> runs ATen codegen -> compiles TypeScript
-npm test             # runs CPU unit, dispatcher, autograd, PyTorch parity, and e2e training tests
-npm run test:cuda    # runs CUDA tests (requires a CUDA build and free GPU)
+npm test             # runs full CPU test suite (parity, training e2e, hooks, export runners)
+npm run test:cuda    # runs CUDA tests (Streams, Events, CUDAGraph, fused AdamW, pinned DataLoader)
+npm run bench        # compares CPU latency against Python PyTorch on 4 threads
 npm run lint:cpp     # runs clang-tidy across native/src/*.cpp
 ```
 

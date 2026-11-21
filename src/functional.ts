@@ -363,6 +363,143 @@ export function klDiv(
   return wrapTensor(native.fast.klDiv(input._native, target._native, reduction, logTarget));
 }
 
+export function huberLoss(
+  input: Tensor,
+  target: Tensor,
+  reduction: Reduction = 'mean',
+  delta = 1.0
+): Tensor {
+  return wrapTensor(native.fast.huberLoss(input._native, target._native, reduction, delta));
+}
+
+export function cosineSimilarity(x1: Tensor, x2: Tensor, dim = 1, eps = 1e-8): Tensor {
+  return wrapTensor(native.fast.cosineSimilarity(x1._native, x2._native, dim, eps));
+}
+
+export interface Conv3dOptions {
+  bias?: Tensor | null;
+  stride?: number | [number, number, number];
+  padding?: number | [number, number, number];
+  dilation?: number | [number, number, number];
+  groups?: number;
+}
+
+function triple(v: number | [number, number, number]): [number, number, number] {
+  return Array.isArray(v) ? v : [v, v, v];
+}
+
+export function conv3d(input: Tensor, weight: Tensor, opts?: Conv3dOptions): Tensor {
+  return wrapTensor(
+    native.fast.conv3d(
+      input._native,
+      weight._native,
+      opts?.bias ? opts.bias._native : null,
+      triple(opts?.stride ?? 1),
+      triple(opts?.padding ?? 0),
+      triple(opts?.dilation ?? 1),
+      opts?.groups ?? 1
+    )
+  );
+}
+
+export interface ConvTranspose1dOptions {
+  bias?: Tensor | null;
+  stride?: number | [number];
+  padding?: number | [number];
+  outputPadding?: number | [number];
+  groups?: number;
+  dilation?: number | [number];
+}
+
+export function convTranspose1d(
+  input: Tensor,
+  weight: Tensor,
+  opts?: ConvTranspose1dOptions
+): Tensor {
+  return wrapTensor(
+    native.fast.convTranspose1d(
+      input._native,
+      weight._native,
+      opts?.bias ? opts.bias._native : null,
+      single(opts?.stride ?? 1),
+      single(opts?.padding ?? 0),
+      single(opts?.outputPadding ?? 0),
+      opts?.groups ?? 1,
+      single(opts?.dilation ?? 1)
+    )
+  );
+}
+
+export interface ConvTranspose2dOptions {
+  bias?: Tensor | null;
+  stride?: number | [number, number];
+  padding?: number | [number, number];
+  outputPadding?: number | [number, number];
+  groups?: number;
+  dilation?: number | [number, number];
+}
+
+export function convTranspose2d(
+  input: Tensor,
+  weight: Tensor,
+  opts?: ConvTranspose2dOptions
+): Tensor {
+  return wrapTensor(
+    native.fast.convTranspose2d(
+      input._native,
+      weight._native,
+      opts?.bias ? opts.bias._native : null,
+      pair(opts?.stride ?? 1),
+      pair(opts?.padding ?? 0),
+      pair(opts?.outputPadding ?? 0),
+      opts?.groups ?? 1,
+      pair(opts?.dilation ?? 1)
+    )
+  );
+}
+
+export interface InterpolateOptions {
+  size?: number | [number, number];
+  scaleFactor?: number | [number, number];
+  mode?: 'nearest' | 'bilinear' | 'bicubic';
+  alignCorners?: boolean;
+}
+
+export function interpolate(input: Tensor, opts: InterpolateOptions): Tensor {
+  let outSize: [number, number];
+  if (opts.size !== undefined) {
+    outSize = pair(opts.size);
+  } else if (opts.scaleFactor !== undefined) {
+    const [sh, sw] = pair(opts.scaleFactor);
+    const h = input.size(input.ndim - 2);
+    const w = input.size(input.ndim - 1);
+    outSize = [Math.floor(h * sh), Math.floor(w * sw)];
+  } else {
+    throw new TypeError('interpolate() requires either size or scaleFactor');
+  }
+  return wrapTensor(
+    native.fast.upsample2d(
+      input._native,
+      outSize,
+      opts.mode ?? 'nearest',
+      opts.alignCorners ?? false
+    )
+  );
+}
+
+export function pad(
+  input: Tensor,
+  padWidths: number[],
+  mode: 'constant' | 'reflect' | 'replicate' | 'circular' = 'constant',
+  value?: number
+): Tensor {
+  return wrapTensor(native.fast.pad(input._native, padWidths, mode, value ?? null));
+}
+
+export function oneHot(input: Tensor, numClasses = -1): Tensor {
+  return wrapTensor(native.fast.oneHot(input._native, numClasses));
+}
+
 export const functional = {
   linear,
   relu,
@@ -375,6 +512,12 @@ export const functional = {
   logSoftmax,
   conv1d,
   conv2d,
+  conv3d,
+  convTranspose1d,
+  convTranspose2d,
+  interpolate,
+  pad,
+  oneHot,
   maxPool2d,
   avgPool2d,
   adaptiveAvgPool2d,
@@ -390,6 +533,8 @@ export const functional = {
   mseLoss,
   l1Loss,
   smoothL1Loss,
+  huberLoss,
+  cosineSimilarity,
   binaryCrossEntropyWithLogits,
   klDiv,
 };

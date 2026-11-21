@@ -50,6 +50,8 @@ class TensorWrap : public Napi::ObjectWrap<TensorWrap> {
   Napi::Value Device(const Napi::CallbackInfo& info);
   Napi::Value IsContiguous(const Napi::CallbackInfo& info);
   Napi::Value IsCuda(const Napi::CallbackInfo& info);
+  Napi::Value IsPinned(const Napi::CallbackInfo& info);
+  Napi::Value PinMemory(const Napi::CallbackInfo& info);
   Napi::Value RequiresGrad(const Napi::CallbackInfo& info);
   Napi::Value SetRequiresGrad(const Napi::CallbackInfo& info);
   Napi::Value IsLeaf(const Napi::CallbackInfo& info);
@@ -58,10 +60,13 @@ class TensorWrap : public Napi::ObjectWrap<TensorWrap> {
   Napi::Value Grad(const Napi::CallbackInfo& info);
   Napi::Value SetGrad(const Napi::CallbackInfo& info);
   Napi::Value GradFnName(const Napi::CallbackInfo& info);
+  Napi::Value RegisterHook(const Napi::CallbackInfo& info);
+  Napi::Value RemoveHook(const Napi::CallbackInfo& info);
   Napi::Value DataPtr(const Napi::CallbackInfo& info);
   Napi::Value StoragePtr(const Napi::CallbackInfo& info);
   Napi::Value Item(const Napi::CallbackInfo& info);
   Napi::Value ToTypedArray(const Napi::CallbackInfo& info);
+  Napi::Value ToTypedArrayAsync(const Napi::CallbackInfo& info);
   Napi::Value DataView(const Napi::CallbackInfo& info);
   Napi::Value CopyFrom(const Napi::CallbackInfo& info);
   Napi::Value Detach(const Napi::CallbackInfo& info);

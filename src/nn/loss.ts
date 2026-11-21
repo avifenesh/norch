@@ -125,3 +125,29 @@ export class KLDivLoss extends Module {
     return F.klDiv(input, target, this.reduction, this.logTarget);
   }
 }
+
+export class HuberLoss extends Module {
+  readonly reduction: Reduction;
+  readonly delta: number;
+  constructor(opts?: { reduction?: Reduction; delta?: number }) {
+    super();
+    this.reduction = opts?.reduction ?? 'mean';
+    this.delta = opts?.delta ?? 1.0;
+  }
+  forward(input: Tensor, target: Tensor): Tensor {
+    return F.huberLoss(input, target, this.reduction, this.delta);
+  }
+}
+
+export class CosineSimilarity extends Module {
+  readonly dim: number;
+  readonly eps: number;
+  constructor(dim = 1, eps = 1e-8) {
+    super();
+    this.dim = dim;
+    this.eps = eps;
+  }
+  forward(x1: Tensor, x2: Tensor): Tensor {
+    return F.cosineSimilarity(x1, x2, this.dim, this.eps);
+  }
+}

@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "norch/generator_wrap.hpp"
 #include "norch/tensor_wrap.hpp"
 
 namespace norch {
@@ -506,7 +507,7 @@ c10::IValue JsToIValue(
       if (val.IsUndefined() || val.IsNull()) {
         return {};
       }
-      throw Napi::TypeError::New(env, "Custom Generator instances are not supported in boxed ops yet");
+      return {GeneratorWrap::UnwrapGenerator(env, val)};
     default:
       throw Napi::TypeError::New(
           env, std::string("Unsupported ATen schema argument type: ") + target_type->repr_str());

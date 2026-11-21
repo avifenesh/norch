@@ -143,6 +143,14 @@ export class Tensor implements Disposable {
     return this._native.isCuda();
   }
 
+  get isPinned(): boolean {
+    return this._native.isPinned();
+  }
+
+  pinMemory(): Tensor {
+    return wrapTensor(this._native.pinMemory());
+  }
+
   get requiresGrad(): boolean {
     return this._native.requiresGrad();
   }
@@ -212,6 +220,11 @@ export class Tensor implements Disposable {
   /** Safe copy into a JS TypedArray (moves to CPU & contiguous automatically). */
   toTypedArray(): TypedArray {
     return this._native.toTypedArray();
+  }
+
+  /** Non-blocking copy to CPU + TypedArray on a libuv worker thread. */
+  toTypedArrayAsync(): Promise<TypedArray> {
+    return this._native.toTypedArrayAsync();
   }
 
   /** Zero-copy TypedArray view directly over CPU contiguous tensor storage. */
@@ -347,6 +360,30 @@ export class Tensor implements Disposable {
     this._native.backward(grad ? grad._native : undefined, nativeOpts);
   }
 
+  registerHook(
+    hook: (grad: Tensor) => Tensor | null | undefined | void
+  ): { remove(): void; [Symbol.dispose](): void } {
+    const handleId = this._native.registerHook((nativeGrad) => {
+      const wrapped = wrapTensor(nativeGrad);
+      const res = hook(wrapped);
+      if (res instanceof Tensor) {
+        return res._native;
+      }
+      return undefined;
+    });
+    let removed = false;
+    const remove = (): void => {
+      if (!removed && !this.isDisposed) {
+        removed = true;
+        this._native.removeHook(handleId);
+      }
+    };
+    return {
+      remove,
+      [Symbol.dispose]: remove,
+    };
+  }
+
   // ---------- Indexing ----------
 
   at(...indices: TensorIndexItem[]): Tensor {
@@ -359,9 +396,9 @@ export class Tensor implements Disposable {
     return wrapTensor(this._native.indexGet(raw));
   }
 
-  indexPut_(indices: TensorIndexItem[], value: Tensor | Scalar, accumulate = false): this {
+  indexPut_(indices: TensorIndexItem[], value: Tensor | Scalar): this {
     const raw = indices.map((idx) => (idx instanceof Tensor ? idx._native : idx));
-    this._native.indexPut(raw, value instanceof Tensor ? value._native : value, accumulate);
+    this._native.indexPut(raw, value instanceof Tensor ? value._native : value);
     return this;
   }
 

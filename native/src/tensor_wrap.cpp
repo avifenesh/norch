@@ -6,8 +6,10 @@
 #include <torch/csrc/autograd/autograd.h>
 #include <torch/csrc/autograd/function.h>
 
+#include <cstdio>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -74,7 +76,8 @@ namespace {
 struct ZeroCopyPin {
   Napi::Reference<Napi::Value> ref;
   std::thread::id owner_thread;
-  napi_threadsafe_function tsfn = nullptr;
+  AddonState* state = nullptr;
+  std::shared_ptr<std::atomic<bool>> env_alive;
 };
 
 Napi::Value FromTypedArray(const Napi::CallbackInfo& info) {
@@ -149,49 +152,24 @@ Napi::Value FromTypedArray(const Napi::CallbackInfo& info) {
     const auto blob_opts = at::TensorOptions().dtype(blob_dtype).device(c10::kCPU);
     if (!copy && target_dtype == blob_dtype && target_device.is_cpu()) {
       auto& state = AddonState::Get(env);
-      auto* pin = new ZeroCopyPin();
+      auto pin = std::make_shared<ZeroCopyPin>();
       pin->ref = Napi::Persistent(info[0]);
       pin->owner_thread = state.js_thread_id();
-      // Create an unref'd TSFN so if the tensor is freed from a non-JS thread,
-      // the JS reference is still released safely on the JS thread.
-      napi_value resource_name = Napi::String::New(env, "norch.ZeroCopyPin");
-      const auto status = napi_create_threadsafe_function(
-          env,
-          nullptr,
-          nullptr,
-          resource_name,
-          0,
-          1,
-          nullptr,
-          nullptr,
-          nullptr,
-          [](napi_env /*cb_env*/, napi_value /*js_cb*/, void* /*ctx*/, void* data) {
-            auto* p = static_cast<ZeroCopyPin*>(data);
-            p->ref.Reset();
-            if (p->tsfn != nullptr) {
-              napi_release_threadsafe_function(p->tsfn, napi_tsfn_release);
-            }
-            delete p;
-          },
-          &pin->tsfn);
-      if (status != napi_ok) {
-        delete pin;
-        throw Napi::Error::New(env, "Failed to create threadsafe finalizer for zero-copy tensor");
-      }
-      napi_unref_threadsafe_function(env, pin->tsfn);
+      pin->state = &state;
+      pin->env_alive = state.env_alive;
 
       result = at::from_blob(
           raw_ptr,
           shape,
-          [pin](void* /*ptr*/) {
+          [pin = std::move(pin)](void* /*ptr*/) {
+            if (!pin->env_alive || !pin->env_alive->load()) {
+              pin->ref.SuppressDestruct();
+              return;
+            }
             if (std::this_thread::get_id() == pin->owner_thread) {
               pin->ref.Reset();
-              if (pin->tsfn != nullptr) {
-                napi_release_threadsafe_function(pin->tsfn, napi_tsfn_release);
-              }
-              delete pin;
-            } else if (pin->tsfn != nullptr) {
-              napi_call_threadsafe_function(pin->tsfn, pin, napi_tsfn_nonblocking);
+            } else if (pin->state != nullptr) {
+              pin->state->EnqueuePinRelease(std::move(pin->ref));
             }
           },
           blob_opts);
@@ -229,6 +207,8 @@ Napi::Function TensorWrap::Init(Napi::Env env, Napi::Object exports) {
           InstanceMethod("device", &TensorWrap::Device),
           InstanceMethod("isContiguous", &TensorWrap::IsContiguous),
           InstanceMethod("isCuda", &TensorWrap::IsCuda),
+          InstanceMethod("isPinned", &TensorWrap::IsPinned),
+          InstanceMethod("pinMemory", &TensorWrap::PinMemory),
           InstanceMethod("requiresGrad", &TensorWrap::RequiresGrad),
           InstanceMethod("setRequiresGrad", &TensorWrap::SetRequiresGrad),
           InstanceMethod("isLeaf", &TensorWrap::IsLeaf),
@@ -237,10 +217,13 @@ Napi::Function TensorWrap::Init(Napi::Env env, Napi::Object exports) {
           InstanceMethod("grad", &TensorWrap::Grad),
           InstanceMethod("setGrad", &TensorWrap::SetGrad),
           InstanceMethod("gradFnName", &TensorWrap::GradFnName),
+          InstanceMethod("registerHook", &TensorWrap::RegisterHook),
+          InstanceMethod("removeHook", &TensorWrap::RemoveHook),
           InstanceMethod("dataPtr", &TensorWrap::DataPtr),
           InstanceMethod("storagePtr", &TensorWrap::StoragePtr),
           InstanceMethod("item", &TensorWrap::Item),
           InstanceMethod("toTypedArray", &TensorWrap::ToTypedArray),
+          InstanceMethod("toTypedArrayAsync", &TensorWrap::ToTypedArrayAsync),
           InstanceMethod("dataView", &TensorWrap::DataView),
           InstanceMethod("copyFrom", &TensorWrap::CopyFrom),
           InstanceMethod("detach", &TensorWrap::Detach),
@@ -479,6 +462,20 @@ Napi::Value TensorWrap::IsCuda(const Napi::CallbackInfo& info) {
   });
 }
 
+Napi::Value TensorWrap::IsPinned(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Boolean::New(env, tensor().is_pinned());
+  });
+}
+
+Napi::Value TensorWrap::PinMemory(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return NewInstance(env, tensor().pin_memory());
+  });
+}
+
 Napi::Value TensorWrap::RequiresGrad(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
@@ -551,6 +548,123 @@ Napi::Value TensorWrap::GradFnName(const Napi::CallbackInfo& info) {
   });
 }
 
+namespace {
+
+struct JsHookHolder {
+  napi_env env;
+  AddonState* state;
+  Napi::FunctionReference fn;
+
+  JsHookHolder(Napi::Env e, AddonState* s, Napi::Function f)
+      : env(e), state(s), fn(Napi::Persistent(f)) {
+    state->custom_autograd_nodes_alive.fetch_add(1);
+  }
+  ~JsHookHolder() noexcept {
+    try {
+      if (state != nullptr) {
+        state->custom_autograd_nodes_alive.fetch_sub(1);
+        if (std::this_thread::get_id() == state->js_thread_id()) {
+          const Napi::Env e(env);
+          if (e.GetInstanceData<AddonState>() != nullptr) {
+            fn.Reset();
+          }
+        }
+      }
+    } catch (...) {
+      std::fputs("norch: suppressed exception in ~JsHookHolder\n", stderr);
+    }
+  }
+  JsHookHolder(const JsHookHolder&) = delete;
+  JsHookHolder& operator=(const JsHookHolder&) = delete;
+  JsHookHolder(JsHookHolder&&) = delete;
+  JsHookHolder& operator=(JsHookHolder&&) = delete;
+};
+
+class ToTypedArrayWorker final : public Napi::AsyncWorker {
+ public:
+  ToTypedArrayWorker(Napi::Env env, at::Tensor src, Napi::Promise::Deferred deferred)
+      : Napi::AsyncWorker(env),
+        src_(std::move(src)),
+        deferred_(deferred) {}
+
+  void Execute() override {
+    try {
+      at::Tensor cpu_contig = src_.to(c10::kCPU).contiguous();
+      dtype_ = cpu_contig.scalar_type();
+      numel_ = static_cast<std::size_t>(cpu_contig.numel());
+      const std::size_t nbytes = cpu_contig.nbytes();
+      bytes_.resize(nbytes);
+      if (nbytes > 0) {
+        std::memcpy(bytes_.data(), cpu_contig.data_ptr(), nbytes);
+      }
+    } catch (const c10::Error& err) {
+      SetError(err.what_without_backtrace());
+    } catch (const std::exception& ex) {
+      SetError(ex.what());
+    }
+  }
+
+  void OnOK() override {
+    const Napi::Env env = Env();
+    auto ab = Napi::ArrayBuffer::New(env, bytes_.size());
+    if (!bytes_.empty()) {
+      std::memcpy(ab.Data(), bytes_.data(), bytes_.size());
+    }
+    deferred_.Resolve(WrapBufferAsTypedArray(env, ab, dtype_, numel_));
+  }
+
+  void OnError(const Napi::Error& err) override { deferred_.Reject(err.Value()); }
+
+ private:
+  at::Tensor src_;
+  Napi::Promise::Deferred deferred_;
+  std::vector<std::uint8_t> bytes_;
+  c10::ScalarType dtype_ = c10::ScalarType::Float;
+  std::size_t numel_ = 0;
+};
+
+}  // namespace
+
+Napi::Value TensorWrap::RegisterHook(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    if (info.Length() < 1 || !info[0].IsFunction()) {
+      throw Napi::TypeError::New(env, "registerHook(fn) expects a callback function");
+    }
+    auto& state = AddonState::Get(env);
+    auto holder = std::make_shared<JsHookHolder>(env, &state, info[0].As<Napi::Function>());
+    const unsigned hook_id = tensor().register_hook([holder](const at::Tensor& grad) -> at::Tensor {
+      TORCH_CHECK(
+          holder->state != nullptr && std::this_thread::get_id() == holder->state->js_thread_id(),
+          "Tensor autograd hook invoked off the JS main thread");
+      const Napi::Env cb_env(holder->env);
+      const Napi::HandleScope scope(cb_env);
+      const Napi::Value ret = holder->fn.Call({TensorWrap::NewInstance(cb_env, grad)});
+      if (cb_env.IsExceptionPending()) {
+        const Napi::Error err = cb_env.GetAndClearPendingException();
+        TORCH_CHECK(false, "JS exception in tensor gradient hook: ", err.Message());
+      }
+      if (ret.IsUndefined() || ret.IsNull()) {
+        return grad;
+      }
+      return TensorWrap::UnwrapTensor(cb_env, ret);
+    });
+    return Napi::Number::New(env, static_cast<double>(hook_id));
+  });
+}
+
+Napi::Value TensorWrap::RemoveHook(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    if (info.Length() < 1 || !info[0].IsNumber()) {
+      throw Napi::TypeError::New(env, "removeHook(handleId) expects a numeric handle id");
+    }
+    const auto hook_id = info[0].As<Napi::Number>().Uint32Value();
+    tensor().remove_hook(hook_id);
+    return env.Undefined();
+  });
+}
+
 Napi::Value TensorWrap::DataPtr(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
@@ -589,6 +703,16 @@ Napi::Value TensorWrap::ToTypedArray(const Napi::CallbackInfo& info) {
       std::memcpy(ab.Data(), cpu_contig.data_ptr(), nbytes);
     }
     return WrapBufferAsTypedArray(env, ab, cpu_contig.scalar_type(), numel);
+  });
+}
+
+Napi::Value TensorWrap::ToTypedArrayAsync(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    auto deferred = Napi::Promise::Deferred::New(env);
+    auto* worker = new ToTypedArrayWorker(env, tensor().detach(), deferred);
+    worker->Queue();
+    return deferred.Promise();
   });
 }
 

@@ -1,5 +1,8 @@
 import { noGrad } from '../autograd.js';
-import type { Tensor } from '../tensor.js';
+import { tidy } from '../memory.js';
+import { native, type NativeTensor } from '../native.js';
+import { randn } from '../ops.js';
+import { wrapTensor, type Tensor } from '../tensor.js';
 
 export type Nonlinearity = 'linear' | 'conv1d' | 'conv2d' | 'sigmoid' | 'tanh' | 'relu' | 'leaky_relu';
 
@@ -93,6 +96,69 @@ export function kaimingNormal_(
   return normal_(tensor, 0, std);
 }
 
+/**
+ * Truncated normal initialization using inverse-CDF sampling (matches torch.nn.init.trunc_normal_).
+ */
+export function truncNormal_(tensor: Tensor, mean = 0, std = 1, a = -2, b = 2): Tensor {
+  return noGrad(() =>
+    tidy(() => {
+      const normCdf = (x: number): number => {
+        // Abramowitz & Stegun 7.1.26 erf approximation (max err 1.5e-7)
+        const z = x / Math.SQRT2;
+        const sign = z < 0 ? -1 : 1;
+        const ax = Math.abs(z);
+        const t = 1.0 / (1.0 + 0.3275911 * ax);
+        const y =
+          1.0 -
+          (((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t +
+            0.254829592) *
+            t) *
+            Math.exp(-ax * ax);
+        return 0.5 * (1.0 + sign * y);
+      };
+      const l = normCdf((a - mean) / std);
+      const u = normCdf((b - mean) / std);
+      tensor.uniform_(2 * l - 1, 2 * u - 1);
+      const erfinv = wrapTensor(native.callOp('aten::erfinv', '', [tensor._native]) as NativeTensor);
+      tensor.copy_(erfinv.mul(std * Math.SQRT2).add(mean).clamp(a, b));
+      return tensor;
+    })
+  );
+}
+
+/**
+ * Fills tensor with a (semi-)orthogonal matrix (matches torch.nn.init.orthogonal_).
+ */
+export function orthogonal_(tensor: Tensor, gain = 1.0): Tensor {
+  if (tensor.ndim < 2) {
+    throw new Error('Only tensors with 2 or more dimensions are supported for orthogonal_');
+  }
+  return noGrad(() =>
+    tidy(() => {
+      const rows = tensor.size(0);
+      const cols = tensor.numel / rows;
+      const flat = randn([Math.max(rows, cols), Math.min(rows, cols)], {
+        dtype: tensor.dtype,
+        device: tensor.device,
+      });
+      const [qRaw, rRaw] = native.callOp('aten::linalg_qr', '', [flat._native, 'reduced']) as [
+        NativeTensor,
+        NativeTensor,
+      ];
+      let q = wrapTensor(qRaw);
+      const r = wrapTensor(rRaw);
+      const d = wrapTensor(native.callOp('aten::diagonal', '', [r._native, 0, -2, -1]) as NativeTensor);
+      const ph = wrapTensor(native.callOp('aten::sign', '', [d._native]) as NativeTensor);
+      q = q.mul(ph);
+      if (rows < cols) {
+        q = q.T.contiguous();
+      }
+      tensor.copy_(q.reshape(tensor.shape).mul(gain));
+      return tensor;
+    })
+  );
+}
+
 export const init = {
   calculateGain,
   calculateFanInAndFanOut,
@@ -105,4 +171,6 @@ export const init = {
   xavierNormal_,
   kaimingUniform_,
   kaimingNormal_,
+  truncNormal_,
+  orthogonal_,
 };

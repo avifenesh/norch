@@ -13,7 +13,24 @@ const outFile = path.join(outDir, 'aten_ops.ts');
 const native = require(addonPath);
 const schemas = native.getAllSchemas('aten::');
 
-// Map ATen schema type string to TypeScript type
+const RESERVED = new Set([
+  'default',
+  'in',
+  'class',
+  'var',
+  'function',
+  'return',
+  'new',
+  'delete',
+  'switch',
+  'export',
+  'import',
+  'typeof',
+  'void',
+  'this',
+  'super',
+]);
+
 function mapSchemaType(typeStr, realTypeStr) {
   const real = realTypeStr || typeStr;
   if (typeStr.endsWith('?')) {
@@ -24,6 +41,7 @@ function mapSchemaType(typeStr, realTypeStr) {
   if (real === 'Layout') return 'string | number';
   if (real === 'MemoryFormat') return 'string | number';
   if (typeStr === 'Tensor') return 'Tensor';
+  if (typeStr === 'Generator') return 'Generator';
   if (typeStr === 'int' || typeStr === 'SymInt') return 'number | bigint';
   if (typeStr === 'float' || typeStr === 'SymFloat') return 'number';
   if (typeStr === 'bool' || typeStr === 'SymBool') return 'boolean';
@@ -62,6 +80,27 @@ function mapReturnType(rets) {
   return `[${parts.join(', ')}]`;
 }
 
+function formatOverloadSignature(opName, schema) {
+  const posArgs = schema.arguments.filter((a) => !a.kwargOnly);
+  const kwArgs = schema.arguments.filter((a) => a.kwargOnly);
+  const params = [];
+  let sawOptional = false;
+  for (const a of posArgs) {
+    const safeName = RESERVED.has(a.name) ? `${a.name}_` : a.name;
+    const isOpt = sawOptional || a.hasDefault || a.type.endsWith('?');
+    if (isOpt) sawOptional = true;
+    params.push(`${safeName}${isOpt ? '?' : ''}: ${mapSchemaType(a.type, a.realType)}`);
+  }
+  if (kwArgs.length > 0) {
+    const fields = kwArgs
+      .map((a) => `${a.name}?: ${mapSchemaType(a.type, a.realType)}`)
+      .join('; ');
+    params.push(`options?: { ${fields} }`);
+  }
+  const ret = mapReturnType(schema.returns);
+  return `${opName}(${params.join(', ')}): ${ret};`;
+}
+
 // Group public ATen ops (skip internal `_`-prefixed ops, `out` variants, backward internals)
 const grouped = new Map();
 for (const s of schemas) {
@@ -88,46 +127,34 @@ const lines = [
   '',
   "import type { DType } from '../dtype.js';",
   "import type { DeviceLike } from '../device.js';",
+  "import type { Generator } from '../generator.js';",
   "import { Tensor, wrapResult } from '../tensor.js';",
   "import { native } from '../native.js';",
   '',
   'export interface AtenOps {',
 ];
 
+let totalOverloads = 0;
+
 for (const opName of sortedNames) {
   const overloads = grouped.get(opName);
-  // Emit a clean summary JSDoc + callable signature covering all overloads
-  const primary = overloads.find((o) => o.overload === '') ?? overloads[0];
-  const retType = mapReturnType(primary.returns);
-  const sigHints = overloads
-    .slice(0, 4)
-    .map((o) => {
-      const a = o.arguments.map((x) => `${x.name}: ${x.type}`).join(', ');
-      return `${opName}${o.overload ? '.' + o.overload : ''}(${a})`;
-    })
-    .join(' | ');
-  lines.push(`  /** ${sigHints.replace(/\*\//g, '* /')} */`);
-  if (overloads.length === 1) {
-    const posArgs = primary.arguments.filter((a) => !a.kwargOnly);
-    const kwArgs = primary.arguments.filter((a) => a.kwargOnly);
-    const params = posArgs.map((a) => {
-      const safeName = ['default', 'in', 'class', 'var', 'function', 'return', 'new', 'delete', 'switch'].includes(
-        a.name
-      )
-        ? `${a.name}_`
-        : a.name;
-      const opt = a.hasDefault || a.type.endsWith('?') ? '?' : '';
-      return `${safeName}${opt}: ${mapSchemaType(a.type, a.realType)}`;
-    });
-    if (kwArgs.length > 0) {
-      const fields = kwArgs
-        .map((a) => `${a.name}?: ${mapSchemaType(a.type, a.realType)}`)
-        .join('; ');
-      params.push(`options?: { ${fields} }`);
+  // Emit deduplicated overload signatures for every non-out overload, plus a fallback for kwargs-style calls
+  const seenSigs = new Set();
+  const emitted = [];
+  for (const ov of overloads) {
+    const sig = formatOverloadSignature(opName, ov);
+    if (!seenSigs.has(sig)) {
+      seenSigs.add(sig);
+      emitted.push(sig);
     }
-    lines.push(`  ${opName}(${params.join(', ')}): ${retType};`);
-  } else {
-    lines.push(`  ${opName}(...args: unknown[]): ${retType};`);
+  }
+  for (const sig of emitted) {
+    lines.push(`  ${sig}`);
+    totalOverloads += 1;
+  }
+  if (overloads.length > 1) {
+    const primary = overloads.find((o) => o.overload === '') ?? overloads[0];
+    lines.push(`  ${opName}(...args: unknown[]): ${mapReturnType(primary.returns)};`);
   }
 }
 
@@ -143,6 +170,7 @@ lines.push('function isPlainOptionsObject(v: unknown): v is Record<string, unkno
 lines.push("  if (v === null || typeof v !== 'object') return false;");
 lines.push('  if (Array.isArray(v) || ArrayBuffer.isView(v)) return false;');
 lines.push('  if (v instanceof Tensor) return false;');
+lines.push("  if ('_native' in v) return false;");
 lines.push('  const proto = Object.getPrototypeOf(v);');
 lines.push('  return proto === Object.prototype || proto === null;');
 lines.push('}');
@@ -181,5 +209,5 @@ lines.push('');
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(outFile, lines.join('\n'), 'utf8');
 console.log(
-  `[norch codegen] generated ${outFile} (${sortedNames.length} public ops from ${schemas.length} ATen schemas)`
+  `[norch codegen] generated ${outFile} (${sortedNames.length} public ops, ${totalOverloads} typed overloads from ${schemas.length} ATen schemas)`
 );

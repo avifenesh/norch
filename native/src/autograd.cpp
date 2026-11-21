@@ -105,6 +105,8 @@ class JsAutogradNode final : public torch::autograd::Node {
     output_info_ = std::move(info);
   }
 
+  void SetMaterializeGrads(bool materialize) noexcept { materialize_grads_ = materialize; }
+
   void SaveVariables(const torch::autograd::variable_list& vars, const std::unordered_set<at::TensorImpl*>& outputs) {
     saved_vars_.clear();
     saved_vars_.reserve(vars.size());
@@ -154,12 +156,21 @@ class JsAutogradNode final : public torch::autograd::Node {
     auto ctx = ctx_obj_.Value();
     ctx.Set("_savedNativeTensors", saved_arr);
 
+    // Populate ctx.needsInputGrad matching PyTorch Function backward semantics
+    const auto num_edges = next_edges().size();
+    auto needs_grad_arr = Napi::Array::New(env, num_edges);
+    for (std::size_t i = 0; i < num_edges; ++i) {
+      needs_grad_arr.Set(
+          static_cast<std::uint32_t>(i), Napi::Boolean::New(env, task_should_compute_output(i)));
+    }
+    ctx.Set("needsInputGrad", needs_grad_arr);
+
     at::OptionalDeviceGuard device_guard;
     auto js_grads = Napi::Array::New(env, incoming.size());
     for (std::size_t i = 0; i < incoming.size(); ++i) {
       if (incoming[i].defined()) {
         js_grads.Set(static_cast<std::uint32_t>(i), TensorWrap::NewInstance(env, std::move(incoming[i])));
-      } else if (i < output_info_.size()) {
+      } else if (materialize_grads_ && i < output_info_.size()) {
         js_grads.Set(
             static_cast<std::uint32_t>(i),
             TensorWrap::NewInstance(env, output_info_[i].zeros(device_guard)));
@@ -219,6 +230,7 @@ class JsAutogradNode final : public torch::autograd::Node {
   std::size_t num_tensor_inputs_;
   std::vector<torch::autograd::SavedVariable> saved_vars_;
   std::vector<torch::autograd::VariableInfo> output_info_;
+  bool materialize_grads_ = true;
   bool freed_ = false;
 };
 
@@ -469,6 +481,15 @@ Napi::Value ApplyCustomAutograd(const Napi::CallbackInfo& info) {
       }
     }
 
+    std::unordered_set<at::TensorImpl*> dirty_inputs;
+    if (ctx_obj.Has("_dirtyInputs") && ctx_obj.Get("_dirtyInputs").IsArray()) {
+      const auto di = ctx_obj.Get("_dirtyInputs").As<Napi::Array>();
+      for (std::uint32_t i = 0; i < di.Length(); ++i) {
+        auto& t = TensorWrap::UnwrapMutableTensor(env, di.Get(i));
+        dirty_inputs.insert(t.unsafeGetTensorImpl());
+      }
+    }
+
     const torch::autograd::_jvp_fn_t jvp_fn =
         [](const torch::autograd::variable_list& /*inputs*/,
            const torch::autograd::variable_list& /*gI*/) -> torch::autograd::variable_list {
@@ -483,7 +504,7 @@ Napi::Value ApplyCustomAutograd(const Napi::CallbackInfo& info) {
     auto wrapped_outputs = torch::autograd::_wrap_outputs(
         input_vars,
         non_diff,
-        empty_set,
+        dirty_inputs,
         raw_outputs,
         is_executable ? c10::intrusive_ptr<torch::autograd::Node>(node) : nullptr,
         jvp_fn,
@@ -493,6 +514,9 @@ Napi::Value ApplyCustomAutograd(const Napi::CallbackInfo& info) {
         attached_node);
 
     if (is_executable) {
+      if (ctx_obj.Has("_materializeGrads") && ctx_obj.Get("_materializeGrads").IsBoolean()) {
+        node->SetMaterializeGrads(ctx_obj.Get("_materializeGrads").As<Napi::Boolean>().Value());
+      }
       std::vector<torch::autograd::VariableInfo> out_info;
       out_info.reserve(wrapped_outputs.size());
       for (const auto& out : wrapped_outputs) {
@@ -524,6 +548,51 @@ Napi::Value ApplyCustomAutograd(const Napi::CallbackInfo& info) {
   });
 }
 
+Napi::Value EnterDualLevel(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto level = torch::autograd::forward_ad::enter_dual_level();
+    return Napi::Number::New(env, static_cast<double>(level));
+  });
+}
+
+Napi::Value ExitDualLevel(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    if (info.Length() < 1 || !info[0].IsNumber()) {
+      throw Napi::TypeError::New(env, "exitDualLevel(level) expects a numeric level");
+    }
+    const auto level = static_cast<std::uint64_t>(info[0].As<Napi::Number>().Int64Value());
+    torch::autograd::forward_ad::exit_dual_level(level);
+    return env.Undefined();
+  });
+}
+
+Napi::Value MakeDual(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& primal = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& tangent = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto level = info[2].As<Napi::Number>().Int64Value();
+    return TensorWrap::NewInstance(env, at::_make_dual(primal, tangent, level));
+  });
+}
+
+Napi::Value UnpackDual(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& dual = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto level = info[1].As<Napi::Number>().Int64Value();
+    auto [primal, tangent] = at::_unpack_dual(dual, level);
+    auto obj = Napi::Object::New(env);
+    obj.Set("primal", TensorWrap::NewInstance(env, std::move(primal)));
+    obj.Set(
+        "tangent",
+        tangent.defined() ? TensorWrap::NewInstance(env, tangent) : env.Null());
+    return obj;
+  });
+}
+
 }  // namespace
 
 void RegisterAutograd(Napi::Env env, Napi::Object exports) {
@@ -542,6 +611,10 @@ void RegisterAutograd(Napi::Env env, Napi::Object exports) {
   exports.Set("autogradBackward", Napi::Function::New(env, AutogradBackward));
   exports.Set("autogradGrad", Napi::Function::New(env, AutogradGrad));
   exports.Set("applyCustomAutograd", Napi::Function::New(env, ApplyCustomAutograd));
+  exports.Set("enterDualLevel", Napi::Function::New(env, EnterDualLevel));
+  exports.Set("exitDualLevel", Napi::Function::New(env, ExitDualLevel));
+  exports.Set("makeDual", Napi::Function::New(env, MakeDual));
+  exports.Set("unpackDual", Napi::Function::New(env, UnpackDual));
 }
 
 }  // namespace norch

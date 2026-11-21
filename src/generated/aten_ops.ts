@@ -4,2041 +4,1566 @@
 
 import type { DType } from '../dtype.js';
 import type { DeviceLike } from '../device.js';
+import type { Generator } from '../generator.js';
 import { Tensor, wrapResult } from '../tensor.js';
 import { native } from '../native.js';
 
 export interface AtenOps {
-  /** abs(self: Tensor) */
   abs(self: Tensor): Tensor;
-  /** abs_(self: Tensor) */
   abs_(self: Tensor): Tensor;
-  /** absolute(self: Tensor) */
   absolute(self: Tensor): Tensor;
-  /** absolute_(self: Tensor) */
   absolute_(self: Tensor): Tensor;
-  /** acos(self: Tensor) */
   acos(self: Tensor): Tensor;
-  /** acos_(self: Tensor) */
   acos_(self: Tensor): Tensor;
-  /** acosh(self: Tensor) */
   acosh(self: Tensor): Tensor;
-  /** acosh_(self: Tensor) */
   acosh_(self: Tensor): Tensor;
-  /** adaptive_avg_pool1d(self: Tensor, output_size: List[int]) */
   adaptive_avg_pool1d(self: Tensor, output_size: unknown): Tensor;
-  /** adaptive_avg_pool2d(self: Tensor, output_size: List[int]) */
   adaptive_avg_pool2d(self: Tensor, output_size: unknown): Tensor;
-  /** adaptive_avg_pool3d(self: Tensor, output_size: List[int]) */
   adaptive_avg_pool3d(self: Tensor, output_size: unknown): Tensor;
-  /** adaptive_max_pool1d(self: Tensor, output_size: List[int]) */
   adaptive_max_pool1d(self: Tensor, output_size: unknown): [Tensor, Tensor];
-  /** adaptive_max_pool2d(self: Tensor, output_size: List[int]) */
   adaptive_max_pool2d(self: Tensor, output_size: unknown): [Tensor, Tensor];
-  /** adaptive_max_pool3d(self: Tensor, output_size: List[int]) */
   adaptive_max_pool3d(self: Tensor, output_size: unknown): [Tensor, Tensor];
-  /** add.Scalar(self: Tensor, other: number, alpha: number) | add.Tensor(self: Tensor, other: Tensor, alpha: number) */
+  add(self: Tensor, other: unknown, alpha?: unknown): Tensor;
+  add(self: Tensor, other: Tensor, options?: { alpha?: unknown }): Tensor;
   add(...args: unknown[]): Tensor;
-  /** add_.Tensor(self: Tensor, other: Tensor, alpha: number) | add_.Scalar(self: Tensor, other: number, alpha: number) */
+  add_(self: Tensor, other: Tensor, options?: { alpha?: unknown }): Tensor;
+  add_(self: Tensor, other: unknown, alpha?: unknown): Tensor;
   add_(...args: unknown[]): Tensor;
-  /** addbmm(self: Tensor, batch1: Tensor, batch2: Tensor, beta: number, alpha: number) */
   addbmm(self: Tensor, batch1: Tensor, batch2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** addbmm_(self: Tensor, batch1: Tensor, batch2: Tensor, beta: number, alpha: number) */
   addbmm_(self: Tensor, batch1: Tensor, batch2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** addcdiv(self: Tensor, tensor1: Tensor, tensor2: Tensor, value: number) */
   addcdiv(self: Tensor, tensor1: Tensor, tensor2: Tensor, options?: { value?: unknown }): Tensor;
-  /** addcdiv_(self: Tensor, tensor1: Tensor, tensor2: Tensor, value: number) */
   addcdiv_(self: Tensor, tensor1: Tensor, tensor2: Tensor, options?: { value?: unknown }): Tensor;
-  /** addcmul(self: Tensor, tensor1: Tensor, tensor2: Tensor, value: number) */
   addcmul(self: Tensor, tensor1: Tensor, tensor2: Tensor, options?: { value?: unknown }): Tensor;
-  /** addcmul_(self: Tensor, tensor1: Tensor, tensor2: Tensor, value: number) */
   addcmul_(self: Tensor, tensor1: Tensor, tensor2: Tensor, options?: { value?: unknown }): Tensor;
-  /** addmm(self: Tensor, mat1: Tensor, mat2: Tensor, beta: number, alpha: number) | addmm.dtype(self: Tensor, mat1: Tensor, mat2: Tensor, out_dtype: int, beta: number, alpha: number) */
+  addmm(self: Tensor, mat1: Tensor, mat2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
+  addmm(self: Tensor, mat1: Tensor, mat2: Tensor, out_dtype: DType | number, options?: { beta?: unknown; alpha?: unknown }): Tensor;
   addmm(...args: unknown[]): Tensor;
-  /** addmm_(self: Tensor, mat1: Tensor, mat2: Tensor, beta: number, alpha: number) */
   addmm_(self: Tensor, mat1: Tensor, mat2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** addmv(self: Tensor, mat: Tensor, vec: Tensor, beta: number, alpha: number) */
   addmv(self: Tensor, mat: Tensor, vec: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** addmv_(self: Tensor, mat: Tensor, vec: Tensor, beta: number, alpha: number) */
   addmv_(self: Tensor, mat: Tensor, vec: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** addr(self: Tensor, vec1: Tensor, vec2: Tensor, beta: number, alpha: number) */
   addr(self: Tensor, vec1: Tensor, vec2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** addr_(self: Tensor, vec1: Tensor, vec2: Tensor, beta: number, alpha: number) */
   addr_(self: Tensor, vec1: Tensor, vec2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** adjoint(self: Tensor) */
   adjoint(self: Tensor): Tensor;
-  /** affine_grid_generator(theta: Tensor, size: List[int], align_corners: bool) */
   affine_grid_generator(theta: Tensor, size: unknown, align_corners: boolean): Tensor;
-  /** alias(self: Tensor) */
   alias(self: Tensor): Tensor;
-  /** alias_copy(self: Tensor) */
   alias_copy(self: Tensor): Tensor;
-  /** all.dim(self: Tensor, dim: int, keepdim: bool) | all(self: Tensor) | all.dims(self: Tensor, dim: Optional[List[int]], keepdim: bool) */
+  all(self: Tensor, dim: number | bigint, keepdim?: boolean): Tensor;
+  all(self: Tensor): Tensor;
+  all(self: Tensor, dim?: unknown, keepdim?: boolean): Tensor;
   all(...args: unknown[]): Tensor;
-  /** allclose(self: Tensor, other: Tensor, rtol: float, atol: float, equal_nan: bool) */
   allclose(self: Tensor, other: Tensor, rtol?: number, atol?: number, equal_nan?: boolean): boolean;
-  /** alpha_dropout(input: Tensor, p: float, train: bool) */
   alpha_dropout(input: Tensor, p: number, train: boolean): Tensor;
-  /** alpha_dropout_(self: Tensor, p: float, train: bool) */
   alpha_dropout_(self: Tensor, p: number, train: boolean): Tensor;
-  /** amax(self: Tensor, dim: List[int], keepdim: bool) */
   amax(self: Tensor, dim?: unknown, keepdim?: boolean): Tensor;
-  /** amin(self: Tensor, dim: List[int], keepdim: bool) */
   amin(self: Tensor, dim?: unknown, keepdim?: boolean): Tensor;
-  /** aminmax(self: Tensor, dim: Optional[int], keepdim: bool) */
   aminmax(self: Tensor, options?: { dim?: unknown; keepdim?: boolean }): [Tensor, Tensor];
-  /** angle(self: Tensor) */
   angle(self: Tensor): Tensor;
-  /** any(self: Tensor) | any.dim(self: Tensor, dim: int, keepdim: bool) | any.dims(self: Tensor, dim: Optional[List[int]], keepdim: bool) */
+  any(self: Tensor): Tensor;
+  any(self: Tensor, dim: number | bigint, keepdim?: boolean): Tensor;
+  any(self: Tensor, dim?: unknown, keepdim?: boolean): Tensor;
   any(...args: unknown[]): Tensor;
-  /** arange.start_step(start: number, end: number, step: number, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | arange.start(start: number, end: number, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | arange(end: number, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  arange(start: unknown, end: unknown, step?: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  arange(start: unknown, end: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  arange(end: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   arange(...args: unknown[]): Tensor;
-  /** arccos(self: Tensor) */
   arccos(self: Tensor): Tensor;
-  /** arccos_(self: Tensor) */
   arccos_(self: Tensor): Tensor;
-  /** arccosh(self: Tensor) */
   arccosh(self: Tensor): Tensor;
-  /** arccosh_(self: Tensor) */
   arccosh_(self: Tensor): Tensor;
-  /** arcsin(self: Tensor) */
   arcsin(self: Tensor): Tensor;
-  /** arcsin_(self: Tensor) */
   arcsin_(self: Tensor): Tensor;
-  /** arcsinh(self: Tensor) */
   arcsinh(self: Tensor): Tensor;
-  /** arcsinh_(self: Tensor) */
   arcsinh_(self: Tensor): Tensor;
-  /** arctan(self: Tensor) */
   arctan(self: Tensor): Tensor;
-  /** arctan2(self: Tensor, other: Tensor) */
   arctan2(self: Tensor, other: Tensor): Tensor;
-  /** arctan2_(self: Tensor, other: Tensor) */
   arctan2_(self: Tensor, other: Tensor): Tensor;
-  /** arctan_(self: Tensor) */
   arctan_(self: Tensor): Tensor;
-  /** arctanh(self: Tensor) */
   arctanh(self: Tensor): Tensor;
-  /** arctanh_(self: Tensor) */
   arctanh_(self: Tensor): Tensor;
-  /** argmax(self: Tensor, dim: Optional[int], keepdim: bool) */
   argmax(self: Tensor, dim?: unknown, keepdim?: boolean): Tensor;
-  /** argmin(self: Tensor, dim: Optional[int], keepdim: bool) */
   argmin(self: Tensor, dim?: unknown, keepdim?: boolean): Tensor;
-  /** argsort(self: Tensor, dim: int, descending: bool) | argsort.stable(self: Tensor, stable: bool, dim: int, descending: bool) */
+  argsort(self: Tensor, dim?: number | bigint, descending?: boolean): Tensor;
+  argsort(self: Tensor, options?: { stable?: boolean; dim?: number | bigint; descending?: boolean }): Tensor;
   argsort(...args: unknown[]): Tensor;
-  /** argwhere(self: Tensor) */
   argwhere(self: Tensor): Tensor;
-  /** as_strided(self: Tensor, size: List[int], stride: List[int], storage_offset: Optional[int]) */
   as_strided(self: Tensor, size: unknown, stride: unknown, storage_offset?: unknown): Tensor;
-  /** as_strided_(self: Tensor, size: List[int], stride: List[int], storage_offset: Optional[int]) */
   as_strided_(self: Tensor, size: unknown, stride: unknown, storage_offset?: unknown): Tensor;
-  /** as_strided_copy(self: Tensor, size: List[int], stride: List[int], storage_offset: Optional[int]) */
   as_strided_copy(self: Tensor, size: unknown, stride: unknown, storage_offset?: unknown): Tensor;
-  /** as_strided_scatter(self: Tensor, src: Tensor, size: List[int], stride: List[int], storage_offset: Optional[int]) */
   as_strided_scatter(self: Tensor, src: Tensor, size: unknown, stride: unknown, storage_offset?: unknown): Tensor;
-  /** asin(self: Tensor) */
   asin(self: Tensor): Tensor;
-  /** asin_(self: Tensor) */
   asin_(self: Tensor): Tensor;
-  /** asinh(self: Tensor) */
   asinh(self: Tensor): Tensor;
-  /** asinh_(self: Tensor) */
   asinh_(self: Tensor): Tensor;
-  /** atan(self: Tensor) */
   atan(self: Tensor): Tensor;
-  /** atan2(self: Tensor, other: Tensor) */
   atan2(self: Tensor, other: Tensor): Tensor;
-  /** atan2_(self: Tensor, other: Tensor) */
   atan2_(self: Tensor, other: Tensor): Tensor;
-  /** atan_(self: Tensor) */
   atan_(self: Tensor): Tensor;
-  /** atanh(self: Tensor) */
   atanh(self: Tensor): Tensor;
-  /** atanh_(self: Tensor) */
   atanh_(self: Tensor): Tensor;
-  /** atleast_1d.Sequence(tensors: List[Tensor]) | atleast_1d(self: Tensor) */
+  atleast_1d(tensors: unknown): unknown;
+  atleast_1d(self: Tensor): Tensor;
   atleast_1d(...args: unknown[]): Tensor;
-  /** atleast_2d.Sequence(tensors: List[Tensor]) | atleast_2d(self: Tensor) */
+  atleast_2d(tensors: unknown): unknown;
+  atleast_2d(self: Tensor): Tensor;
   atleast_2d(...args: unknown[]): Tensor;
-  /** atleast_3d(self: Tensor) | atleast_3d.Sequence(tensors: List[Tensor]) */
+  atleast_3d(self: Tensor): Tensor;
+  atleast_3d(tensors: unknown): unknown;
   atleast_3d(...args: unknown[]): Tensor;
-  /** avg_pool1d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], ceil_mode: bool, count_include_pad: bool) */
   avg_pool1d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, ceil_mode?: boolean, count_include_pad?: boolean): Tensor;
-  /** avg_pool2d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], ceil_mode: bool, count_include_pad: bool, divisor_override: Optional[int]) */
   avg_pool2d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, ceil_mode?: boolean, count_include_pad?: boolean, divisor_override?: unknown): Tensor;
-  /** avg_pool3d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], ceil_mode: bool, count_include_pad: bool, divisor_override: Optional[int]) */
   avg_pool3d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, ceil_mode?: boolean, count_include_pad?: boolean, divisor_override?: unknown): Tensor;
-  /** baddbmm(self: Tensor, batch1: Tensor, batch2: Tensor, beta: number, alpha: number) | baddbmm.dtype(self: Tensor, batch1: Tensor, batch2: Tensor, out_dtype: int, beta: number, alpha: number) */
+  baddbmm(self: Tensor, batch1: Tensor, batch2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
+  baddbmm(self: Tensor, batch1: Tensor, batch2: Tensor, out_dtype: DType | number, options?: { beta?: unknown; alpha?: unknown }): Tensor;
   baddbmm(...args: unknown[]): Tensor;
-  /** baddbmm_(self: Tensor, batch1: Tensor, batch2: Tensor, beta: number, alpha: number) */
   baddbmm_(self: Tensor, batch1: Tensor, batch2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** bartlett_window(window_length: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | bartlett_window.periodic(window_length: int, periodic: bool, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  bartlett_window(window_length: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  bartlett_window(window_length: number | bigint, periodic: boolean, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   bartlett_window(...args: unknown[]): Tensor;
-  /** batch_norm(input: Tensor, weight: Optional[Tensor], bias: Optional[Tensor], running_mean: Optional[Tensor], running_var: Optional[Tensor], training: bool, momentum: float, eps: float, cudnn_enabled: bool) */
   batch_norm(input: Tensor, weight: unknown, bias: unknown, running_mean: unknown, running_var: unknown, training: boolean, momentum: number, eps: number, cudnn_enabled: boolean): Tensor;
-  /** batch_norm_backward_elemt(grad_out: Tensor, input: Tensor, mean: Tensor, invstd: Tensor, weight: Optional[Tensor], sum_dy: Tensor, sum_dy_xmu: Tensor, count: Tensor) */
   batch_norm_backward_elemt(grad_out: Tensor, input: Tensor, mean: Tensor, invstd: Tensor, weight: unknown, sum_dy: Tensor, sum_dy_xmu: Tensor, count: Tensor): Tensor;
-  /** batch_norm_backward_reduce(grad_out: Tensor, input: Tensor, mean: Tensor, invstd: Tensor, weight: Optional[Tensor], input_g: bool, weight_g: bool, bias_g: bool) */
   batch_norm_backward_reduce(grad_out: Tensor, input: Tensor, mean: Tensor, invstd: Tensor, weight: unknown, input_g: boolean, weight_g: boolean, bias_g: boolean): [Tensor, Tensor, Tensor, Tensor];
-  /** batch_norm_elemt(input: Tensor, weight: Optional[Tensor], bias: Optional[Tensor], mean: Tensor, invstd: Tensor, eps: float) */
   batch_norm_elemt(input: Tensor, weight: unknown, bias: unknown, mean: Tensor, invstd: Tensor, eps: number): Tensor;
-  /** batch_norm_gather_stats(input: Tensor, mean: Tensor, invstd: Tensor, running_mean: Optional[Tensor], running_var: Optional[Tensor], momentum: float, eps: float, count: int) */
   batch_norm_gather_stats(input: Tensor, mean: Tensor, invstd: Tensor, running_mean: unknown, running_var: unknown, momentum: number, eps: number, count: number | bigint): [Tensor, Tensor];
-  /** batch_norm_gather_stats_with_counts(input: Tensor, mean: Tensor, invstd: Tensor, running_mean: Optional[Tensor], running_var: Optional[Tensor], momentum: float, eps: float, counts: Tensor) */
   batch_norm_gather_stats_with_counts(input: Tensor, mean: Tensor, invstd: Tensor, running_mean: unknown, running_var: unknown, momentum: number, eps: number, counts: Tensor): [Tensor, Tensor];
-  /** batch_norm_stats(input: Tensor, eps: float) */
   batch_norm_stats(input: Tensor, eps: number): [Tensor, Tensor];
-  /** batch_norm_update_stats(input: Tensor, running_mean: Optional[Tensor], running_var: Optional[Tensor], momentum: float) */
   batch_norm_update_stats(input: Tensor, running_mean: unknown, running_var: unknown, momentum: number): [Tensor, Tensor];
-  /** bernoulli.p(self: Tensor, p: float, generator: Optional[Generator]) | bernoulli.Tensor(self: Tensor, p: Tensor, generator: Optional[Generator]) | bernoulli(self: Tensor, generator: Optional[Generator]) */
+  bernoulli(self: Tensor, p: number, options?: { generator?: unknown }): Tensor;
+  bernoulli(self: Tensor, p: Tensor, options?: { generator?: unknown }): Tensor;
+  bernoulli(self: Tensor, options?: { generator?: unknown }): Tensor;
   bernoulli(...args: unknown[]): Tensor;
-  /** bernoulli_.Tensor(self: Tensor, p: Tensor, generator: Optional[Generator]) | bernoulli_.float(self: Tensor, p: float, generator: Optional[Generator]) */
+  bernoulli_(self: Tensor, p: Tensor, options?: { generator?: unknown }): Tensor;
+  bernoulli_(self: Tensor, p?: number, options?: { generator?: unknown }): Tensor;
   bernoulli_(...args: unknown[]): Tensor;
-  /** bilinear(input1: Tensor, input2: Tensor, weight: Tensor, bias: Optional[Tensor]) */
   bilinear(input1: Tensor, input2: Tensor, weight: Tensor, bias?: unknown): Tensor;
-  /** binary_cross_entropy(self: Tensor, target: Tensor, weight: Optional[Tensor], reduction: int) */
   binary_cross_entropy(self: Tensor, target: Tensor, weight?: unknown, reduction?: number | bigint): Tensor;
-  /** binary_cross_entropy_with_logits(self: Tensor, target: Tensor, weight: Optional[Tensor], pos_weight: Optional[Tensor], reduction: int) */
   binary_cross_entropy_with_logits(self: Tensor, target: Tensor, weight?: unknown, pos_weight?: unknown, reduction?: number | bigint): Tensor;
-  /** bincount(self: Tensor, weights: Optional[Tensor], minlength: int) */
   bincount(self: Tensor, weights?: unknown, minlength?: number | bigint): Tensor;
-  /** binomial(count: Tensor, prob: Tensor, generator: Optional[Generator]) */
   binomial(count: Tensor, prob: Tensor, generator?: unknown): Tensor;
-  /** bitwise_and.Scalar(self: Tensor, other: number) | bitwise_and.Scalar_Tensor(self: number, other: Tensor) | bitwise_and.Tensor(self: Tensor, other: Tensor) */
+  bitwise_and(self: Tensor, other: unknown): Tensor;
+  bitwise_and(self: unknown, other: Tensor): Tensor;
+  bitwise_and(self: Tensor, other: Tensor): Tensor;
   bitwise_and(...args: unknown[]): Tensor;
-  /** bitwise_and_.Tensor(self: Tensor, other: Tensor) | bitwise_and_.Scalar(self: Tensor, other: number) */
+  bitwise_and_(self: Tensor, other: Tensor): Tensor;
+  bitwise_and_(self: Tensor, other: unknown): Tensor;
   bitwise_and_(...args: unknown[]): Tensor;
-  /** bitwise_left_shift.Tensor(self: Tensor, other: Tensor) | bitwise_left_shift.Scalar_Tensor(self: number, other: Tensor) | bitwise_left_shift.Tensor_Scalar(self: Tensor, other: number) */
+  bitwise_left_shift(self: Tensor, other: Tensor): Tensor;
+  bitwise_left_shift(self: unknown, other: Tensor): Tensor;
+  bitwise_left_shift(self: Tensor, other: unknown): Tensor;
   bitwise_left_shift(...args: unknown[]): Tensor;
-  /** bitwise_left_shift_.Tensor(self: Tensor, other: Tensor) | bitwise_left_shift_.Tensor_Scalar(self: Tensor, other: number) */
+  bitwise_left_shift_(self: Tensor, other: Tensor): Tensor;
+  bitwise_left_shift_(self: Tensor, other: unknown): Tensor;
   bitwise_left_shift_(...args: unknown[]): Tensor;
-  /** bitwise_not(self: Tensor) */
   bitwise_not(self: Tensor): Tensor;
-  /** bitwise_not_(self: Tensor) */
   bitwise_not_(self: Tensor): Tensor;
-  /** bitwise_or.Tensor(self: Tensor, other: Tensor) | bitwise_or.Scalar(self: Tensor, other: number) | bitwise_or.Scalar_Tensor(self: number, other: Tensor) */
+  bitwise_or(self: Tensor, other: Tensor): Tensor;
+  bitwise_or(self: Tensor, other: unknown): Tensor;
+  bitwise_or(self: unknown, other: Tensor): Tensor;
   bitwise_or(...args: unknown[]): Tensor;
-  /** bitwise_or_.Scalar(self: Tensor, other: number) | bitwise_or_.Tensor(self: Tensor, other: Tensor) */
+  bitwise_or_(self: Tensor, other: unknown): Tensor;
+  bitwise_or_(self: Tensor, other: Tensor): Tensor;
   bitwise_or_(...args: unknown[]): Tensor;
-  /** bitwise_right_shift.Scalar_Tensor(self: number, other: Tensor) | bitwise_right_shift.Tensor_Scalar(self: Tensor, other: number) | bitwise_right_shift.Tensor(self: Tensor, other: Tensor) */
+  bitwise_right_shift(self: unknown, other: Tensor): Tensor;
+  bitwise_right_shift(self: Tensor, other: unknown): Tensor;
+  bitwise_right_shift(self: Tensor, other: Tensor): Tensor;
   bitwise_right_shift(...args: unknown[]): Tensor;
-  /** bitwise_right_shift_.Tensor(self: Tensor, other: Tensor) | bitwise_right_shift_.Tensor_Scalar(self: Tensor, other: number) */
+  bitwise_right_shift_(self: Tensor, other: Tensor): Tensor;
+  bitwise_right_shift_(self: Tensor, other: unknown): Tensor;
   bitwise_right_shift_(...args: unknown[]): Tensor;
-  /** bitwise_xor.Scalar_Tensor(self: number, other: Tensor) | bitwise_xor.Scalar(self: Tensor, other: number) | bitwise_xor.Tensor(self: Tensor, other: Tensor) */
+  bitwise_xor(self: unknown, other: Tensor): Tensor;
+  bitwise_xor(self: Tensor, other: unknown): Tensor;
+  bitwise_xor(self: Tensor, other: Tensor): Tensor;
   bitwise_xor(...args: unknown[]): Tensor;
-  /** bitwise_xor_.Tensor(self: Tensor, other: Tensor) | bitwise_xor_.Scalar(self: Tensor, other: number) */
+  bitwise_xor_(self: Tensor, other: Tensor): Tensor;
+  bitwise_xor_(self: Tensor, other: unknown): Tensor;
   bitwise_xor_(...args: unknown[]): Tensor;
-  /** blackman_window(window_length: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | blackman_window.periodic(window_length: int, periodic: bool, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  blackman_window(window_length: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  blackman_window(window_length: number | bigint, periodic: boolean, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   blackman_window(...args: unknown[]): Tensor;
-  /** block_diag(tensors: List[Tensor]) */
   block_diag(tensors: unknown): Tensor;
-  /** bmm.dtype(self: Tensor, mat2: Tensor, out_dtype: int) | bmm(self: Tensor, mat2: Tensor) */
+  bmm(self: Tensor, mat2: Tensor, out_dtype: DType | number): Tensor;
+  bmm(self: Tensor, mat2: Tensor): Tensor;
   bmm(...args: unknown[]): Tensor;
-  /** broadcast_tensors(tensors: List[Tensor]) */
   broadcast_tensors(tensors: unknown): unknown;
-  /** broadcast_to(self: Tensor, size: List[int]) */
   broadcast_to(self: Tensor, size: unknown): Tensor;
-  /** bucketize.Tensor(self: Tensor, boundaries: Tensor, out_int32: bool, right: bool) | bucketize.Scalar(self: number, boundaries: Tensor, out_int32: bool, right: bool) */
+  bucketize(self: Tensor, boundaries: Tensor, options?: { out_int32?: boolean; right?: boolean }): Tensor;
+  bucketize(self: unknown, boundaries: Tensor, options?: { out_int32?: boolean; right?: boolean }): Tensor;
   bucketize(...args: unknown[]): Tensor;
-  /** can_cast(from_: int, to: int) */
   can_cast(from_: DType | number, to: DType | number): boolean;
-  /** cartesian_prod(tensors: List[Tensor]) */
   cartesian_prod(tensors: unknown): Tensor;
-  /** cat(tensors: List[Tensor], dim: int) */
   cat(tensors: unknown, dim?: number | bigint): Tensor;
-  /** cauchy(self: Tensor, median: float, sigma: float, generator: Optional[Generator]) */
   cauchy(self: Tensor, median?: number, sigma?: number, options?: { generator?: unknown }): Tensor;
-  /** cauchy_(self: Tensor, median: float, sigma: float, generator: Optional[Generator]) */
   cauchy_(self: Tensor, median?: number, sigma?: number, options?: { generator?: unknown }): Tensor;
-  /** ccol_indices(self: Tensor) */
   ccol_indices(self: Tensor): Tensor;
-  /** ccol_indices_copy(self: Tensor) */
   ccol_indices_copy(self: Tensor): Tensor;
-  /** cdist(x1: Tensor, x2: Tensor, p: float, compute_mode: Optional[int]) */
   cdist(x1: Tensor, x2: Tensor, p?: number, compute_mode?: unknown): Tensor;
-  /** ceil(self: Tensor) */
   ceil(self: Tensor): Tensor;
-  /** ceil_(self: Tensor) */
   ceil_(self: Tensor): Tensor;
-  /** celu(self: Tensor, alpha: number) */
   celu(self: Tensor, alpha?: unknown): Tensor;
-  /** celu_(self: Tensor, alpha: number) */
   celu_(self: Tensor, alpha?: unknown): Tensor;
-  /** chain_matmul(matrices: List[Tensor]) */
   chain_matmul(matrices: unknown): Tensor;
-  /** chalf(self: Tensor, memory_format: Optional[int]) */
   chalf(self: Tensor, options?: { memory_format?: unknown }): Tensor;
-  /** channel_shuffle(self: Tensor, groups: int) */
   channel_shuffle(self: Tensor, groups: number | bigint): Tensor;
-  /** cholesky_inverse(self: Tensor, upper: bool) */
   cholesky_inverse(self: Tensor, upper?: boolean): Tensor;
-  /** cholesky_solve(self: Tensor, input2: Tensor, upper: bool) */
   cholesky_solve(self: Tensor, input2: Tensor, upper?: boolean): Tensor;
-  /** choose_qparams_optimized(input: Tensor, numel: int, n_bins: int, ratio: float, bit_width: int) */
   choose_qparams_optimized(input: Tensor, numel: number | bigint, n_bins: number | bigint, ratio: number, bit_width: number | bigint): [Tensor, Tensor];
-  /** chunk(self: Tensor, chunks: int, dim: int) */
   chunk(self: Tensor, chunks: number | bigint, dim?: number | bigint): unknown;
-  /** clamp(self: Tensor, min: Optional[number], max: Optional[number]) | clamp.Tensor(self: Tensor, min: Optional[Tensor], max: Optional[Tensor]) */
+  clamp(self: Tensor, min?: unknown, max?: unknown): Tensor;
   clamp(...args: unknown[]): Tensor;
-  /** clamp_(self: Tensor, min: Optional[number], max: Optional[number]) | clamp_.Tensor(self: Tensor, min: Optional[Tensor], max: Optional[Tensor]) */
+  clamp_(self: Tensor, min?: unknown, max?: unknown): Tensor;
   clamp_(...args: unknown[]): Tensor;
-  /** clamp_max.Tensor(self: Tensor, max: Tensor) | clamp_max(self: Tensor, max: number) */
+  clamp_max(self: Tensor, max: Tensor): Tensor;
+  clamp_max(self: Tensor, max: unknown): Tensor;
   clamp_max(...args: unknown[]): Tensor;
-  /** clamp_max_(self: Tensor, max: number) | clamp_max_.Tensor(self: Tensor, max: Tensor) */
+  clamp_max_(self: Tensor, max: unknown): Tensor;
+  clamp_max_(self: Tensor, max: Tensor): Tensor;
   clamp_max_(...args: unknown[]): Tensor;
-  /** clamp_min.Tensor(self: Tensor, min: Tensor) | clamp_min(self: Tensor, min: number) */
+  clamp_min(self: Tensor, min: Tensor): Tensor;
+  clamp_min(self: Tensor, min: unknown): Tensor;
   clamp_min(...args: unknown[]): Tensor;
-  /** clamp_min_.Tensor(self: Tensor, min: Tensor) | clamp_min_(self: Tensor, min: number) */
+  clamp_min_(self: Tensor, min: Tensor): Tensor;
+  clamp_min_(self: Tensor, min: unknown): Tensor;
   clamp_min_(...args: unknown[]): Tensor;
-  /** clip.Tensor(self: Tensor, min: Optional[Tensor], max: Optional[Tensor]) | clip(self: Tensor, min: Optional[number], max: Optional[number]) */
+  clip(self: Tensor, min?: unknown, max?: unknown): Tensor;
   clip(...args: unknown[]): Tensor;
-  /** clip_(self: Tensor, min: Optional[number], max: Optional[number]) | clip_.Tensor(self: Tensor, min: Optional[Tensor], max: Optional[Tensor]) */
+  clip_(self: Tensor, min?: unknown, max?: unknown): Tensor;
   clip_(...args: unknown[]): Tensor;
-  /** clone(self: Tensor, memory_format: Optional[int]) */
   clone(self: Tensor, options?: { memory_format?: unknown }): Tensor;
-  /** coalesce(self: Tensor) */
   coalesce(self: Tensor): Tensor;
-  /** col2im(self: Tensor, output_size: List[int], kernel_size: List[int], dilation: List[int], padding: List[int], stride: List[int]) */
   col2im(self: Tensor, output_size: unknown, kernel_size: unknown, dilation: unknown, padding: unknown, stride: unknown): Tensor;
-  /** col_indices(self: Tensor) */
   col_indices(self: Tensor): Tensor;
-  /** col_indices_copy(self: Tensor) */
   col_indices_copy(self: Tensor): Tensor;
-  /** column_stack(tensors: List[Tensor]) */
   column_stack(tensors: unknown): Tensor;
-  /** combinations(self: Tensor, r: int, with_replacement: bool) */
   combinations(self: Tensor, r?: number | bigint, with_replacement?: boolean): Tensor;
-  /** complex(real: Tensor, imag: Tensor) */
   complex(real: Tensor, imag: Tensor): Tensor;
-  /** concat(tensors: List[Tensor], dim: int) */
   concat(tensors: unknown, dim?: number | bigint): Tensor;
-  /** concatenate(tensors: List[Tensor], dim: int) */
   concatenate(tensors: unknown, dim?: number | bigint): Tensor;
-  /** conj(self: Tensor) */
   conj(self: Tensor): Tensor;
-  /** conj_physical(self: Tensor) */
   conj_physical(self: Tensor): Tensor;
-  /** conj_physical_(self: Tensor) */
   conj_physical_(self: Tensor): Tensor;
-  /** constant_pad_nd(self: Tensor, pad: List[int], value: number) */
   constant_pad_nd(self: Tensor, pad: unknown, value?: unknown): Tensor;
-  /** contiguous(self: Tensor, memory_format: int) */
   contiguous(self: Tensor, options?: { memory_format?: string | number }): Tensor;
-  /** conv1d(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int], groups: int) | conv1d.padding(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: str, dilation: List[int], groups: int) */
+  conv1d(input: Tensor, weight: Tensor, bias?: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, groups?: number | bigint): Tensor;
+  conv1d(input: Tensor, weight: Tensor, bias?: unknown, stride?: unknown, padding?: string, dilation?: unknown, groups?: number | bigint): Tensor;
   conv1d(...args: unknown[]): Tensor;
-  /** conv2d.padding(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: str, dilation: List[int], groups: int) | conv2d(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int], groups: int) */
+  conv2d(input: Tensor, weight: Tensor, bias?: unknown, stride?: unknown, padding?: string, dilation?: unknown, groups?: number | bigint): Tensor;
+  conv2d(input: Tensor, weight: Tensor, bias?: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, groups?: number | bigint): Tensor;
   conv2d(...args: unknown[]): Tensor;
-  /** conv3d.padding(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: str, dilation: List[int], groups: int) | conv3d(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int], groups: int) */
+  conv3d(input: Tensor, weight: Tensor, bias?: unknown, stride?: unknown, padding?: string, dilation?: unknown, groups?: number | bigint): Tensor;
+  conv3d(input: Tensor, weight: Tensor, bias?: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, groups?: number | bigint): Tensor;
   conv3d(...args: unknown[]): Tensor;
-  /** conv_depthwise3d(self: Tensor, weight: Tensor, kernel_size: List[int], bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int]) */
   conv_depthwise3d(self: Tensor, weight: Tensor, kernel_size: unknown, bias: unknown, stride: unknown, padding: unknown, dilation: unknown): Tensor;
-  /** conv_tbc(self: Tensor, weight: Tensor, bias: Tensor, pad: int) */
   conv_tbc(self: Tensor, weight: Tensor, bias: Tensor, pad?: number | bigint): Tensor;
-  /** conv_transpose1d(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], output_padding: List[int], groups: int, dilation: List[int]) */
   conv_transpose1d(input: Tensor, weight: Tensor, bias?: unknown, stride?: unknown, padding?: unknown, output_padding?: unknown, groups?: number | bigint, dilation?: unknown): Tensor;
-  /** conv_transpose2d.input(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], output_padding: List[int], groups: int, dilation: List[int]) */
   conv_transpose2d(input: Tensor, weight: Tensor, bias?: unknown, stride?: unknown, padding?: unknown, output_padding?: unknown, groups?: number | bigint, dilation?: unknown): Tensor;
-  /** conv_transpose3d.input(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], output_padding: List[int], groups: int, dilation: List[int]) */
   conv_transpose3d(input: Tensor, weight: Tensor, bias?: unknown, stride?: unknown, padding?: unknown, output_padding?: unknown, groups?: number | bigint, dilation?: unknown): Tensor;
-  /** convolution(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int], transposed: bool, output_padding: List[int], groups: int) */
   convolution(input: Tensor, weight: Tensor, bias: unknown, stride: unknown, padding: unknown, dilation: unknown, transposed: boolean, output_padding: unknown, groups: number | bigint): Tensor;
-  /** convolution_backward_overrideable(grad_output: Tensor, input: Tensor, weight: Tensor, stride: List[int], padding: List[int], dilation: List[int], transposed: bool, output_padding: List[int], groups: int, output_mask: List[bool]) */
   convolution_backward_overrideable(grad_output: Tensor, input: Tensor, weight: Tensor, stride: unknown, padding: unknown, dilation: unknown, transposed: boolean, output_padding: unknown, groups: number | bigint, output_mask: unknown): [Tensor, Tensor, Tensor];
-  /** convolution_overrideable(input: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int], transposed: bool, output_padding: List[int], groups: int) */
   convolution_overrideable(input: Tensor, weight: Tensor, bias: unknown, stride: unknown, padding: unknown, dilation: unknown, transposed: boolean, output_padding: unknown, groups: number | bigint): Tensor;
-  /** copy(self: Tensor, src: Tensor, non_blocking: bool) */
   copy(self: Tensor, src: Tensor, non_blocking?: boolean): Tensor;
-  /** copy_(self: Tensor, src: Tensor, non_blocking: bool) */
   copy_(self: Tensor, src: Tensor, non_blocking?: boolean): Tensor;
-  /** copy_sparse_to_sparse(self: Tensor, src: Tensor, non_blocking: bool) */
   copy_sparse_to_sparse(self: Tensor, src: Tensor, non_blocking?: boolean): Tensor;
-  /** copy_sparse_to_sparse_(self: Tensor, src: Tensor, non_blocking: bool) */
   copy_sparse_to_sparse_(self: Tensor, src: Tensor, non_blocking?: boolean): Tensor;
-  /** copysign.Scalar(self: Tensor, other: number) | copysign.Tensor(self: Tensor, other: Tensor) */
+  copysign(self: Tensor, other: unknown): Tensor;
+  copysign(self: Tensor, other: Tensor): Tensor;
   copysign(...args: unknown[]): Tensor;
-  /** copysign_.Scalar(self: Tensor, other: number) | copysign_.Tensor(self: Tensor, other: Tensor) */
+  copysign_(self: Tensor, other: unknown): Tensor;
+  copysign_(self: Tensor, other: Tensor): Tensor;
   copysign_(...args: unknown[]): Tensor;
-  /** corrcoef(self: Tensor) */
   corrcoef(self: Tensor): Tensor;
-  /** cos(self: Tensor) */
   cos(self: Tensor): Tensor;
-  /** cos_(self: Tensor) */
   cos_(self: Tensor): Tensor;
-  /** cosh(self: Tensor) */
   cosh(self: Tensor): Tensor;
-  /** cosh_(self: Tensor) */
   cosh_(self: Tensor): Tensor;
-  /** cosine_embedding_loss(input1: Tensor, input2: Tensor, target: Tensor, margin: float, reduction: int) */
   cosine_embedding_loss(input1: Tensor, input2: Tensor, target: Tensor, margin?: number, reduction?: number | bigint): Tensor;
-  /** cosine_similarity(x1: Tensor, x2: Tensor, dim: int, eps: float) */
   cosine_similarity(x1: Tensor, x2: Tensor, dim?: number | bigint, eps?: number): Tensor;
-  /** count_nonzero(self: Tensor, dim: Optional[int]) | count_nonzero.dim_IntList(self: Tensor, dim: List[int]) */
+  count_nonzero(self: Tensor, dim?: unknown): Tensor;
+  count_nonzero(self: Tensor, dim: unknown): Tensor;
   count_nonzero(...args: unknown[]): Tensor;
-  /** cov(self: Tensor, correction: int, fweights: Optional[Tensor], aweights: Optional[Tensor]) */
   cov(self: Tensor, options?: { correction?: number | bigint; fweights?: unknown; aweights?: unknown }): Tensor;
-  /** cross(self: Tensor, other: Tensor, dim: Optional[int]) */
   cross(self: Tensor, other: Tensor, dim?: unknown): Tensor;
-  /** cross_entropy_loss(self: Tensor, target: Tensor, weight: Optional[Tensor], reduction: int, ignore_index: int, label_smoothing: float) */
   cross_entropy_loss(self: Tensor, target: Tensor, weight?: unknown, reduction?: number | bigint, ignore_index?: number | bigint, label_smoothing?: number): Tensor;
-  /** crow_indices(self: Tensor) */
   crow_indices(self: Tensor): Tensor;
-  /** crow_indices_copy(self: Tensor) */
   crow_indices_copy(self: Tensor): Tensor;
-  /** ctc_loss.Tensor(log_probs: Tensor, targets: Tensor, input_lengths: Tensor, target_lengths: Tensor, blank: int, reduction: int, zero_infinity: bool) | ctc_loss.IntList(log_probs: Tensor, targets: Tensor, input_lengths: List[int], target_lengths: List[int], blank: int, reduction: int, zero_infinity: bool) */
+  ctc_loss(log_probs: Tensor, targets: Tensor, input_lengths: Tensor, target_lengths: Tensor, blank?: number | bigint, reduction?: number | bigint, zero_infinity?: boolean): Tensor;
+  ctc_loss(log_probs: Tensor, targets: Tensor, input_lengths: unknown, target_lengths: unknown, blank?: number | bigint, reduction?: number | bigint, zero_infinity?: boolean): Tensor;
   ctc_loss(...args: unknown[]): Tensor;
-  /** cudnn_affine_grid_generator(theta: Tensor, N: int, C: int, H: int, W: int) */
   cudnn_affine_grid_generator(theta: Tensor, N: number | bigint, C: number | bigint, H: number | bigint, W: number | bigint): Tensor;
-  /** cudnn_batch_norm(input: Tensor, weight: Tensor, bias: Optional[Tensor], running_mean: Optional[Tensor], running_var: Optional[Tensor], training: bool, exponential_average_factor: float, epsilon: float) */
   cudnn_batch_norm(input: Tensor, weight: Tensor, bias: unknown, running_mean: unknown, running_var: unknown, training: boolean, exponential_average_factor: number, epsilon: number): [Tensor, Tensor, Tensor, Tensor];
-  /** cudnn_convolution(self: Tensor, weight: Tensor, padding: List[int], stride: List[int], dilation: List[int], groups: int, benchmark: bool, deterministic: bool, allow_tf32: bool) */
   cudnn_convolution(self: Tensor, weight: Tensor, padding: unknown, stride: unknown, dilation: unknown, groups: number | bigint, benchmark: boolean, deterministic: boolean, allow_tf32: boolean): Tensor;
-  /** cudnn_convolution_add_relu(self: Tensor, weight: Tensor, z: Tensor, alpha: Optional[number], bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int], groups: int) */
   cudnn_convolution_add_relu(self: Tensor, weight: Tensor, z: Tensor, alpha: unknown, bias: unknown, stride: unknown, padding: unknown, dilation: unknown, groups: number | bigint): Tensor;
-  /** cudnn_convolution_relu(self: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int], groups: int) */
   cudnn_convolution_relu(self: Tensor, weight: Tensor, bias: unknown, stride: unknown, padding: unknown, dilation: unknown, groups: number | bigint): Tensor;
-  /** cudnn_convolution_transpose(self: Tensor, weight: Tensor, padding: List[int], output_padding: List[int], stride: List[int], dilation: List[int], groups: int, benchmark: bool, deterministic: bool, allow_tf32: bool) */
   cudnn_convolution_transpose(self: Tensor, weight: Tensor, padding: unknown, output_padding: unknown, stride: unknown, dilation: unknown, groups: number | bigint, benchmark: boolean, deterministic: boolean, allow_tf32: boolean): Tensor;
-  /** cudnn_grid_sampler(self: Tensor, grid: Tensor) */
   cudnn_grid_sampler(self: Tensor, grid: Tensor): Tensor;
-  /** cudnn_is_acceptable(self: Tensor) */
   cudnn_is_acceptable(self: Tensor): boolean;
-  /** cummax(self: Tensor, dim: int) */
   cummax(self: Tensor, dim: number | bigint): [Tensor, Tensor];
-  /** cummin(self: Tensor, dim: int) */
   cummin(self: Tensor, dim: number | bigint): [Tensor, Tensor];
-  /** cumprod(self: Tensor, dim: int, dtype: Optional[int]) */
   cumprod(self: Tensor, dim: number | bigint, options?: { dtype?: unknown }): Tensor;
-  /** cumprod_(self: Tensor, dim: int, dtype: Optional[int]) */
   cumprod_(self: Tensor, dim: number | bigint, options?: { dtype?: unknown }): Tensor;
-  /** cumsum(self: Tensor, dim: int, dtype: Optional[int]) */
   cumsum(self: Tensor, dim: number | bigint, options?: { dtype?: unknown }): Tensor;
-  /** cumsum_(self: Tensor, dim: int, dtype: Optional[int]) */
   cumsum_(self: Tensor, dim: number | bigint, options?: { dtype?: unknown }): Tensor;
-  /** cumulative_trapezoid.x(y: Tensor, x: Tensor, dim: int) | cumulative_trapezoid.dx(y: Tensor, dx: number, dim: int) */
+  cumulative_trapezoid(y: Tensor, x: Tensor, options?: { dim?: number | bigint }): Tensor;
+  cumulative_trapezoid(y: Tensor, options?: { dx?: unknown; dim?: number | bigint }): Tensor;
   cumulative_trapezoid(...args: unknown[]): Tensor;
-  /** data(self: Tensor) */
   data(self: Tensor): Tensor;
-  /** deg2rad(self: Tensor) */
   deg2rad(self: Tensor): Tensor;
-  /** deg2rad_(self: Tensor) */
   deg2rad_(self: Tensor): Tensor;
-  /** dense_dim(self: Tensor) */
   dense_dim(self: Tensor): number;
-  /** dequantize.self(self: Tensor) | dequantize.tensors(tensors: List[Tensor]) */
+  dequantize(self: Tensor): Tensor;
+  dequantize(tensors: unknown): unknown;
   dequantize(...args: unknown[]): Tensor;
-  /** det(self: Tensor) */
   det(self: Tensor): Tensor;
-  /** detach(self: Tensor) */
   detach(self: Tensor): Tensor;
-  /** detach_(self: Tensor) */
   detach_(self: Tensor): Tensor;
-  /** detach_copy(self: Tensor) */
   detach_copy(self: Tensor): Tensor;
-  /** diag(self: Tensor, diagonal: int) */
   diag(self: Tensor, diagonal?: number | bigint): Tensor;
-  /** diag_embed(self: Tensor, offset: int, dim1: int, dim2: int) */
   diag_embed(self: Tensor, offset?: number | bigint, dim1?: number | bigint, dim2?: number | bigint): Tensor;
-  /** diagflat(self: Tensor, offset: int) */
   diagflat(self: Tensor, offset?: number | bigint): Tensor;
-  /** diagonal(self: Tensor, offset: int, dim1: int, dim2: int) */
   diagonal(self: Tensor, offset?: number | bigint, dim1?: number | bigint, dim2?: number | bigint): Tensor;
-  /** diagonal_copy(self: Tensor, offset: int, dim1: int, dim2: int) */
   diagonal_copy(self: Tensor, offset?: number | bigint, dim1?: number | bigint, dim2?: number | bigint): Tensor;
-  /** diagonal_scatter(self: Tensor, src: Tensor, offset: int, dim1: int, dim2: int) */
   diagonal_scatter(self: Tensor, src: Tensor, offset?: number | bigint, dim1?: number | bigint, dim2?: number | bigint): Tensor;
-  /** diff(self: Tensor, n: int, dim: int, prepend: Optional[Tensor], append: Optional[Tensor]) */
   diff(self: Tensor, n?: number | bigint, dim?: number | bigint, prepend?: unknown, append?: unknown): Tensor;
-  /** digamma(self: Tensor) */
   digamma(self: Tensor): Tensor;
-  /** digamma_(self: Tensor) */
   digamma_(self: Tensor): Tensor;
-  /** dim(self: Tensor) */
   dim(self: Tensor): number;
-  /** dist(self: Tensor, other: Tensor, p: number) */
   dist(self: Tensor, other: Tensor, p?: unknown): Tensor;
-  /** div.Tensor_mode(self: Tensor, other: Tensor, rounding_mode: Optional[str]) | div.Scalar(self: Tensor, other: number) | div.Tensor(self: Tensor, other: Tensor) | div.Scalar_mode(self: Tensor, other: number, rounding_mode: Optional[str]) */
+  div(self: Tensor, other: Tensor, options?: { rounding_mode?: unknown }): Tensor;
+  div(self: Tensor, other: unknown): Tensor;
+  div(self: Tensor, other: Tensor): Tensor;
+  div(self: Tensor, other: unknown, options?: { rounding_mode?: unknown }): Tensor;
   div(...args: unknown[]): Tensor;
-  /** div_.Tensor(self: Tensor, other: Tensor) | div_.Scalar(self: Tensor, other: number) | div_.Tensor_mode(self: Tensor, other: Tensor, rounding_mode: Optional[str]) | div_.Scalar_mode(self: Tensor, other: number, rounding_mode: Optional[str]) */
+  div_(self: Tensor, other: Tensor): Tensor;
+  div_(self: Tensor, other: unknown): Tensor;
+  div_(self: Tensor, other: Tensor, options?: { rounding_mode?: unknown }): Tensor;
+  div_(self: Tensor, other: unknown, options?: { rounding_mode?: unknown }): Tensor;
   div_(...args: unknown[]): Tensor;
-  /** divide.Tensor(self: Tensor, other: Tensor) | divide.Scalar_mode(self: Tensor, other: number, rounding_mode: Optional[str]) | divide.Tensor_mode(self: Tensor, other: Tensor, rounding_mode: Optional[str]) | divide.Scalar(self: Tensor, other: number) */
+  divide(self: Tensor, other: Tensor): Tensor;
+  divide(self: Tensor, other: unknown, options?: { rounding_mode?: unknown }): Tensor;
+  divide(self: Tensor, other: Tensor, options?: { rounding_mode?: unknown }): Tensor;
+  divide(self: Tensor, other: unknown): Tensor;
   divide(...args: unknown[]): Tensor;
-  /** divide_.Tensor_mode(self: Tensor, other: Tensor, rounding_mode: Optional[str]) | divide_.Scalar(self: Tensor, other: number) | divide_.Scalar_mode(self: Tensor, other: number, rounding_mode: Optional[str]) | divide_.Tensor(self: Tensor, other: Tensor) */
+  divide_(self: Tensor, other: Tensor, options?: { rounding_mode?: unknown }): Tensor;
+  divide_(self: Tensor, other: unknown): Tensor;
+  divide_(self: Tensor, other: unknown, options?: { rounding_mode?: unknown }): Tensor;
+  divide_(self: Tensor, other: Tensor): Tensor;
   divide_(...args: unknown[]): Tensor;
-  /** dot(self: Tensor, tensor: Tensor) */
   dot(self: Tensor, tensor: Tensor): Tensor;
-  /** dropout(input: Tensor, p: float, train: bool) */
   dropout(input: Tensor, p: number, train: boolean): Tensor;
-  /** dropout_(self: Tensor, p: float, train: bool) */
   dropout_(self: Tensor, p: number, train: boolean): Tensor;
-  /** dsplit.array(self: Tensor, indices: List[int]) | dsplit.int(self: Tensor, sections: int) */
+  dsplit(self: Tensor, indices: unknown): unknown;
+  dsplit(self: Tensor, sections: number | bigint): unknown;
   dsplit(...args: unknown[]): unknown;
-  /** dstack(tensors: List[Tensor]) */
   dstack(tensors: unknown): Tensor;
-  /** einsum(equation: str, tensors: List[Tensor], path: Optional[List[int]]) */
   einsum(equation: string, tensors: unknown, options?: { path?: unknown }): Tensor;
-  /** elu(self: Tensor, alpha: number, scale: number, input_scale: number) */
   elu(self: Tensor, alpha?: unknown, scale?: unknown, input_scale?: unknown): Tensor;
-  /** elu_(self: Tensor, alpha: number, scale: number, input_scale: number) */
   elu_(self: Tensor, alpha?: unknown, scale?: unknown, input_scale?: unknown): Tensor;
-  /** embedding(weight: Tensor, indices: Tensor, padding_idx: int, scale_grad_by_freq: bool, sparse: bool) */
   embedding(weight: Tensor, indices: Tensor, padding_idx?: number | bigint, scale_grad_by_freq?: boolean, sparse?: boolean): Tensor;
-  /** embedding_bag.padding_idx(weight: Tensor, indices: Tensor, offsets: Tensor, scale_grad_by_freq: bool, mode: int, sparse: bool, per_sample_weights: Optional[Tensor], include_last_offset: bool, padding_idx: Optional[int]) | embedding_bag(weight: Tensor, indices: Tensor, offsets: Tensor, scale_grad_by_freq: bool, mode: int, sparse: bool, per_sample_weights: Optional[Tensor], include_last_offset: bool) */
+  embedding_bag(weight: Tensor, indices: Tensor, offsets: Tensor, scale_grad_by_freq: boolean, mode: number | bigint, sparse: boolean, per_sample_weights: unknown, include_last_offset: boolean, padding_idx: unknown): [Tensor, Tensor, Tensor, Tensor];
+  embedding_bag(weight: Tensor, indices: Tensor, offsets: Tensor, scale_grad_by_freq?: boolean, mode?: number | bigint, sparse?: boolean, per_sample_weights?: unknown, include_last_offset?: boolean): [Tensor, Tensor, Tensor, Tensor];
   embedding_bag(...args: unknown[]): [Tensor, Tensor, Tensor, Tensor];
-  /** embedding_renorm(self: Tensor, indices: Tensor, max_norm: float, norm_type: float) */
   embedding_renorm(self: Tensor, indices: Tensor, max_norm: number, norm_type: number): Tensor;
-  /** embedding_renorm_(self: Tensor, indices: Tensor, max_norm: float, norm_type: float) */
   embedding_renorm_(self: Tensor, indices: Tensor, max_norm: number, norm_type: number): Tensor;
-  /** empty.memory_format(size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) */
   empty(size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
-  /** empty_like(self: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) */
   empty_like(self: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
-  /** empty_permuted(size: List[int], physical_layout: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   empty_permuted(size: unknown, physical_layout: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** empty_quantized(size: List[int], qtensor: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) */
   empty_quantized(size: unknown, qtensor: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
-  /** empty_strided(size: List[int], stride: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   empty_strided(size: unknown, stride: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** eq.Tensor(self: Tensor, other: Tensor) | eq.Scalar(self: Tensor, other: number) */
+  eq(self: Tensor, other: Tensor): Tensor;
+  eq(self: Tensor, other: unknown): Tensor;
   eq(...args: unknown[]): Tensor;
-  /** eq_.Tensor(self: Tensor, other: Tensor) | eq_.Scalar(self: Tensor, other: number) */
+  eq_(self: Tensor, other: Tensor): Tensor;
+  eq_(self: Tensor, other: unknown): Tensor;
   eq_(...args: unknown[]): Tensor;
-  /** equal(self: Tensor, other: Tensor) */
   equal(self: Tensor, other: Tensor): boolean;
-  /** erf(self: Tensor) */
   erf(self: Tensor): Tensor;
-  /** erf_(self: Tensor) */
   erf_(self: Tensor): Tensor;
-  /** erfc(self: Tensor) */
   erfc(self: Tensor): Tensor;
-  /** erfc_(self: Tensor) */
   erfc_(self: Tensor): Tensor;
-  /** erfinv(self: Tensor) */
   erfinv(self: Tensor): Tensor;
-  /** erfinv_(self: Tensor) */
   erfinv_(self: Tensor): Tensor;
-  /** exp(self: Tensor) */
   exp(self: Tensor): Tensor;
-  /** exp2(self: Tensor) */
   exp2(self: Tensor): Tensor;
-  /** exp2_(self: Tensor) */
   exp2_(self: Tensor): Tensor;
-  /** exp_(self: Tensor) */
   exp_(self: Tensor): Tensor;
-  /** expand(self: Tensor, size: List[int], implicit: bool) */
   expand(self: Tensor, size: unknown, options?: { implicit?: boolean }): Tensor;
-  /** expand_as(self: Tensor, other: Tensor) */
   expand_as(self: Tensor, other: Tensor): Tensor;
-  /** expand_copy(self: Tensor, size: List[int], implicit: bool) */
   expand_copy(self: Tensor, size: unknown, options?: { implicit?: boolean }): Tensor;
-  /** expm1(self: Tensor) */
   expm1(self: Tensor): Tensor;
-  /** expm1_(self: Tensor) */
   expm1_(self: Tensor): Tensor;
-  /** exponential(self: Tensor, lambd: float, generator: Optional[Generator]) */
   exponential(self: Tensor, lambd?: number, options?: { generator?: unknown }): Tensor;
-  /** exponential_(self: Tensor, lambd: float, generator: Optional[Generator]) */
   exponential_(self: Tensor, lambd?: number, options?: { generator?: unknown }): Tensor;
-  /** eye(n: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | eye.m(n: int, m: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  eye(n: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  eye(n: number | bigint, m: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   eye(...args: unknown[]): Tensor;
-  /** fake_quantize_per_channel_affine(self: Tensor, scale: Tensor, zero_point: Tensor, axis: int, quant_min: int, quant_max: int) */
   fake_quantize_per_channel_affine(self: Tensor, scale: Tensor, zero_point: Tensor, axis: number | bigint, quant_min: number | bigint, quant_max: number | bigint): Tensor;
-  /** fake_quantize_per_channel_affine_cachemask(self: Tensor, scale: Tensor, zero_point: Tensor, axis: int, quant_min: int, quant_max: int) */
   fake_quantize_per_channel_affine_cachemask(self: Tensor, scale: Tensor, zero_point: Tensor, axis: number | bigint, quant_min: number | bigint, quant_max: number | bigint): [Tensor, Tensor];
-  /** fake_quantize_per_tensor_affine.tensor_qparams(self: Tensor, scale: Tensor, zero_point: Tensor, quant_min: int, quant_max: int) | fake_quantize_per_tensor_affine(self: Tensor, scale: float, zero_point: int, quant_min: int, quant_max: int) */
+  fake_quantize_per_tensor_affine(self: Tensor, scale: Tensor, zero_point: Tensor, quant_min: number | bigint, quant_max: number | bigint): Tensor;
+  fake_quantize_per_tensor_affine(self: Tensor, scale: number, zero_point: number | bigint, quant_min: number | bigint, quant_max: number | bigint): Tensor;
   fake_quantize_per_tensor_affine(...args: unknown[]): Tensor;
-  /** fake_quantize_per_tensor_affine_cachemask(self: Tensor, scale: float, zero_point: int, quant_min: int, quant_max: int) */
   fake_quantize_per_tensor_affine_cachemask(self: Tensor, scale: number, zero_point: number | bigint, quant_min: number | bigint, quant_max: number | bigint): [Tensor, Tensor];
-  /** fbgemm_linear_fp16_weight(input: Tensor, packed_weight: Tensor, bias: Tensor) */
   fbgemm_linear_fp16_weight(input: Tensor, packed_weight: Tensor, bias: Tensor): Tensor;
-  /** fbgemm_linear_fp16_weight_fp32_activation(input: Tensor, packed_weight: Tensor, bias: Optional[Tensor]) */
   fbgemm_linear_fp16_weight_fp32_activation(input: Tensor, packed_weight: Tensor, bias: unknown): Tensor;
-  /** fbgemm_linear_int8_weight(input: Tensor, weight: Tensor, packed: Tensor, col_offsets: Tensor, weight_scale: number, weight_zero_point: number, bias: Tensor) */
   fbgemm_linear_int8_weight(input: Tensor, weight: Tensor, packed: Tensor, col_offsets: Tensor, weight_scale: unknown, weight_zero_point: unknown, bias: Tensor): Tensor;
-  /** fbgemm_linear_int8_weight_fp32_activation(input: Tensor, weight: Tensor, packed: Tensor, col_offsets: Tensor, weight_scale: number, weight_zero_point: number, bias: Tensor) */
   fbgemm_linear_int8_weight_fp32_activation(input: Tensor, weight: Tensor, packed: Tensor, col_offsets: Tensor, weight_scale: unknown, weight_zero_point: unknown, bias: Tensor): Tensor;
-  /** fbgemm_linear_quantize_weight(input: Tensor) */
   fbgemm_linear_quantize_weight(input: Tensor): [Tensor, Tensor, number, number];
-  /** fbgemm_pack_gemm_matrix_fp16(input: Tensor) */
   fbgemm_pack_gemm_matrix_fp16(input: Tensor): Tensor;
-  /** fbgemm_pack_quantized_matrix.KN(input: Tensor, K: int, N: int) | fbgemm_pack_quantized_matrix(input: Tensor) */
+  fbgemm_pack_quantized_matrix(input: Tensor, K: number | bigint, N: number | bigint): Tensor;
+  fbgemm_pack_quantized_matrix(input: Tensor): Tensor;
   fbgemm_pack_quantized_matrix(...args: unknown[]): Tensor;
-  /** feature_alpha_dropout(input: Tensor, p: float, train: bool) */
   feature_alpha_dropout(input: Tensor, p: number, train: boolean): Tensor;
-  /** feature_alpha_dropout_(self: Tensor, p: float, train: bool) */
   feature_alpha_dropout_(self: Tensor, p: number, train: boolean): Tensor;
-  /** feature_dropout(input: Tensor, p: float, train: bool) */
   feature_dropout(input: Tensor, p: number, train: boolean): Tensor;
-  /** feature_dropout_(self: Tensor, p: float, train: bool) */
   feature_dropout_(self: Tensor, p: number, train: boolean): Tensor;
-  /** fft_fft(self: Tensor, n: Optional[int], dim: int, norm: Optional[str]) */
   fft_fft(self: Tensor, n?: unknown, dim?: number | bigint, norm?: unknown): Tensor;
-  /** fft_fft2(self: Tensor, s: Optional[List[int]], dim: List[int], norm: Optional[str]) */
   fft_fft2(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_fftfreq(n: int, d: float, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   fft_fftfreq(n: number | bigint, d?: number, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** fft_fftn(self: Tensor, s: Optional[List[int]], dim: Optional[List[int]], norm: Optional[str]) */
   fft_fftn(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_fftshift(self: Tensor, dim: Optional[List[int]]) */
   fft_fftshift(self: Tensor, dim?: unknown): Tensor;
-  /** fft_hfft(self: Tensor, n: Optional[int], dim: int, norm: Optional[str]) */
   fft_hfft(self: Tensor, n?: unknown, dim?: number | bigint, norm?: unknown): Tensor;
-  /** fft_hfft2(self: Tensor, s: Optional[List[int]], dim: List[int], norm: Optional[str]) */
   fft_hfft2(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_hfftn(self: Tensor, s: Optional[List[int]], dim: Optional[List[int]], norm: Optional[str]) */
   fft_hfftn(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_ifft(self: Tensor, n: Optional[int], dim: int, norm: Optional[str]) */
   fft_ifft(self: Tensor, n?: unknown, dim?: number | bigint, norm?: unknown): Tensor;
-  /** fft_ifft2(self: Tensor, s: Optional[List[int]], dim: List[int], norm: Optional[str]) */
   fft_ifft2(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_ifftn(self: Tensor, s: Optional[List[int]], dim: Optional[List[int]], norm: Optional[str]) */
   fft_ifftn(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_ifftshift(self: Tensor, dim: Optional[List[int]]) */
   fft_ifftshift(self: Tensor, dim?: unknown): Tensor;
-  /** fft_ihfft(self: Tensor, n: Optional[int], dim: int, norm: Optional[str]) */
   fft_ihfft(self: Tensor, n?: unknown, dim?: number | bigint, norm?: unknown): Tensor;
-  /** fft_ihfft2(self: Tensor, s: Optional[List[int]], dim: List[int], norm: Optional[str]) */
   fft_ihfft2(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_ihfftn(self: Tensor, s: Optional[List[int]], dim: Optional[List[int]], norm: Optional[str]) */
   fft_ihfftn(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_irfft(self: Tensor, n: Optional[int], dim: int, norm: Optional[str]) */
   fft_irfft(self: Tensor, n?: unknown, dim?: number | bigint, norm?: unknown): Tensor;
-  /** fft_irfft2(self: Tensor, s: Optional[List[int]], dim: List[int], norm: Optional[str]) */
   fft_irfft2(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_irfftn(self: Tensor, s: Optional[List[int]], dim: Optional[List[int]], norm: Optional[str]) */
   fft_irfftn(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_rfft(self: Tensor, n: Optional[int], dim: int, norm: Optional[str]) */
   fft_rfft(self: Tensor, n?: unknown, dim?: number | bigint, norm?: unknown): Tensor;
-  /** fft_rfft2(self: Tensor, s: Optional[List[int]], dim: List[int], norm: Optional[str]) */
   fft_rfft2(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fft_rfftfreq(n: int, d: float, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   fft_rfftfreq(n: number | bigint, d?: number, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** fft_rfftn(self: Tensor, s: Optional[List[int]], dim: Optional[List[int]], norm: Optional[str]) */
   fft_rfftn(self: Tensor, s?: unknown, dim?: unknown, norm?: unknown): Tensor;
-  /** fill.Scalar(self: Tensor, value: number) | fill.Tensor(self: Tensor, value: Tensor) */
+  fill(self: Tensor, value: unknown): Tensor;
+  fill(self: Tensor, value: Tensor): Tensor;
   fill(...args: unknown[]): Tensor;
-  /** fill_.Scalar(self: Tensor, value: number) | fill_.Tensor(self: Tensor, value: Tensor) */
+  fill_(self: Tensor, value: unknown): Tensor;
+  fill_(self: Tensor, value: Tensor): Tensor;
   fill_(...args: unknown[]): Tensor;
-  /** fill_diagonal_(self: Tensor, fill_value: number, wrap: bool) */
   fill_diagonal_(self: Tensor, fill_value: unknown, wrap?: boolean): Tensor;
-  /** fix(self: Tensor) */
   fix(self: Tensor): Tensor;
-  /** fix_(self: Tensor) */
   fix_(self: Tensor): Tensor;
-  /** flatten.using_ints(self: Tensor, start_dim: int, end_dim: int) */
   flatten(self: Tensor, start_dim?: number | bigint, end_dim?: number | bigint): Tensor;
-  /** flatten_dense_tensors(tensors: List[Tensor]) */
   flatten_dense_tensors(tensors: unknown): Tensor;
-  /** flip(self: Tensor, dims: List[int]) */
   flip(self: Tensor, dims: unknown): Tensor;
-  /** fliplr(self: Tensor) */
   fliplr(self: Tensor): Tensor;
-  /** flipud(self: Tensor) */
   flipud(self: Tensor): Tensor;
-  /** float_power.Tensor_Scalar(self: Tensor, exponent: number) | float_power.Scalar(self: number, exponent: Tensor) | float_power.Tensor_Tensor(self: Tensor, exponent: Tensor) */
+  float_power(self: Tensor, exponent: unknown): Tensor;
+  float_power(self: unknown, exponent: Tensor): Tensor;
+  float_power(self: Tensor, exponent: Tensor): Tensor;
   float_power(...args: unknown[]): Tensor;
-  /** float_power_.Tensor(self: Tensor, exponent: Tensor) | float_power_.Scalar(self: Tensor, exponent: number) */
+  float_power_(self: Tensor, exponent: Tensor): Tensor;
+  float_power_(self: Tensor, exponent: unknown): Tensor;
   float_power_(...args: unknown[]): Tensor;
-  /** floor(self: Tensor) */
   floor(self: Tensor): Tensor;
-  /** floor_(self: Tensor) */
   floor_(self: Tensor): Tensor;
-  /** floor_divide.Scalar(self: Tensor, other: number) | floor_divide(self: Tensor, other: Tensor) */
+  floor_divide(self: Tensor, other: unknown): Tensor;
+  floor_divide(self: Tensor, other: Tensor): Tensor;
   floor_divide(...args: unknown[]): Tensor;
-  /** floor_divide_.Scalar(self: Tensor, other: number) | floor_divide_.Tensor(self: Tensor, other: Tensor) */
+  floor_divide_(self: Tensor, other: unknown): Tensor;
+  floor_divide_(self: Tensor, other: Tensor): Tensor;
   floor_divide_(...args: unknown[]): Tensor;
-  /** fmax(self: Tensor, other: Tensor) */
   fmax(self: Tensor, other: Tensor): Tensor;
-  /** fmin(self: Tensor, other: Tensor) */
   fmin(self: Tensor, other: Tensor): Tensor;
-  /** fmod.Tensor(self: Tensor, other: Tensor) | fmod.Scalar(self: Tensor, other: number) */
+  fmod(self: Tensor, other: Tensor): Tensor;
+  fmod(self: Tensor, other: unknown): Tensor;
   fmod(...args: unknown[]): Tensor;
-  /** fmod_.Scalar(self: Tensor, other: number) | fmod_.Tensor(self: Tensor, other: Tensor) */
+  fmod_(self: Tensor, other: unknown): Tensor;
+  fmod_(self: Tensor, other: Tensor): Tensor;
   fmod_(...args: unknown[]): Tensor;
-  /** frac(self: Tensor) */
   frac(self: Tensor): Tensor;
-  /** frac_(self: Tensor) */
   frac_(self: Tensor): Tensor;
-  /** fractional_max_pool2d(self: Tensor, kernel_size: List[int], output_size: List[int], random_samples: Tensor) */
   fractional_max_pool2d(self: Tensor, kernel_size: unknown, output_size: unknown, random_samples: Tensor): [Tensor, Tensor];
-  /** fractional_max_pool3d(self: Tensor, kernel_size: List[int], output_size: List[int], random_samples: Tensor) */
   fractional_max_pool3d(self: Tensor, kernel_size: unknown, output_size: unknown, random_samples: Tensor): [Tensor, Tensor];
-  /** frexp.Tensor(self: Tensor) */
   frexp(self: Tensor): [Tensor, Tensor];
-  /** frobenius_norm.dim(self: Tensor, dim: List[int], keepdim: bool) */
   frobenius_norm(self: Tensor, dim: unknown, keepdim?: boolean): Tensor;
-  /** from_file(filename: str, shared: Optional[bool], size: Optional[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   from_file(filename: string, shared?: unknown, size?: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** full(size: List[int], fill_value: number, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   full(size: unknown, fill_value: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** full_like(self: Tensor, fill_value: number, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) */
   full_like(self: Tensor, fill_value: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
-  /** fused_moving_avg_obs_fake_quant(self: Tensor, observer_on: Tensor, fake_quant_on: Tensor, running_min: Tensor, running_max: Tensor, scale: Tensor, zero_point: Tensor, averaging_const: float, quant_min: int, quant_max: int, ch_axis: int, per_row_fake_quant: bool, symmetric_quant: bool) */
   fused_moving_avg_obs_fake_quant(self: Tensor, observer_on: Tensor, fake_quant_on: Tensor, running_min: Tensor, running_max: Tensor, scale: Tensor, zero_point: Tensor, averaging_const: number, quant_min: number | bigint, quant_max: number | bigint, ch_axis: number | bigint, per_row_fake_quant?: boolean, symmetric_quant?: boolean): Tensor;
-  /** gather(self: Tensor, dim: int, index: Tensor, sparse_grad: bool) */
   gather(self: Tensor, dim: number | bigint, index: Tensor, options?: { sparse_grad?: boolean }): Tensor;
-  /** gcd(self: Tensor, other: Tensor) */
   gcd(self: Tensor, other: Tensor): Tensor;
-  /** gcd_(self: Tensor, other: Tensor) */
   gcd_(self: Tensor, other: Tensor): Tensor;
-  /** ge.Scalar(self: Tensor, other: number) | ge.Tensor(self: Tensor, other: Tensor) */
+  ge(self: Tensor, other: unknown): Tensor;
+  ge(self: Tensor, other: Tensor): Tensor;
   ge(...args: unknown[]): Tensor;
-  /** ge_.Tensor(self: Tensor, other: Tensor) | ge_.Scalar(self: Tensor, other: number) */
+  ge_(self: Tensor, other: Tensor): Tensor;
+  ge_(self: Tensor, other: unknown): Tensor;
   ge_(...args: unknown[]): Tensor;
-  /** gelu(self: Tensor, approximate: str) */
   gelu(self: Tensor, options?: { approximate?: string }): Tensor;
-  /** gelu_(self: Tensor, approximate: str) */
   gelu_(self: Tensor, options?: { approximate?: string }): Tensor;
-  /** geometric(self: Tensor, p: float, generator: Optional[Generator]) */
   geometric(self: Tensor, p: number, options?: { generator?: unknown }): Tensor;
-  /** geometric_(self: Tensor, p: float, generator: Optional[Generator]) */
   geometric_(self: Tensor, p: number, options?: { generator?: unknown }): Tensor;
-  /** geqrf.a(self: Tensor, a: Tensor, tau: Tensor) | geqrf(self: Tensor) */
+  geqrf(self: Tensor, options?: { a?: Tensor; tau?: Tensor }): [Tensor, Tensor];
+  geqrf(self: Tensor): [Tensor, Tensor];
   geqrf(...args: unknown[]): [Tensor, Tensor];
-  /** ger(self: Tensor, vec2: Tensor) */
   ger(self: Tensor, vec2: Tensor): Tensor;
-  /** get_device(self: Tensor) */
   get_device(self: Tensor): number;
-  /** get_gradients(context_id: int) */
   get_gradients(context_id: number | bigint): unknown;
-  /** glu(self: Tensor, dim: int) */
   glu(self: Tensor, dim?: number | bigint): Tensor;
-  /** glu_backward_jvp(grad_x: Tensor, grad_glu: Tensor, x: Tensor, dgrad_glu: Tensor, dx: Tensor, dim: int) */
   glu_backward_jvp(grad_x: Tensor, grad_glu: Tensor, x: Tensor, dgrad_glu: Tensor, dx: Tensor, dim: number | bigint): Tensor;
-  /** glu_jvp(glu: Tensor, x: Tensor, dx: Tensor, dim: int) */
   glu_jvp(glu: Tensor, x: Tensor, dx: Tensor, dim: number | bigint): Tensor;
-  /** gradient.scalarrayint(self: Tensor, spacing: List[number], dim: Optional[int], edge_order: int) | gradient.array(self: Tensor, dim: List[int], edge_order: int) | gradient.scalararray(self: Tensor, spacing: number, dim: List[int], edge_order: int) | gradient.scalarint(self: Tensor, spacing: Optional[number], dim: Optional[int], edge_order: int) */
+  gradient(self: Tensor, options?: { spacing?: unknown; dim?: unknown; edge_order?: number | bigint }): unknown;
+  gradient(self: Tensor, options?: { dim?: unknown; edge_order?: number | bigint }): unknown;
   gradient(...args: unknown[]): unknown;
-  /** greater.Scalar(self: Tensor, other: number) | greater.Tensor(self: Tensor, other: Tensor) */
+  greater(self: Tensor, other: unknown): Tensor;
+  greater(self: Tensor, other: Tensor): Tensor;
   greater(...args: unknown[]): Tensor;
-  /** greater_.Tensor(self: Tensor, other: Tensor) | greater_.Scalar(self: Tensor, other: number) */
+  greater_(self: Tensor, other: Tensor): Tensor;
+  greater_(self: Tensor, other: unknown): Tensor;
   greater_(...args: unknown[]): Tensor;
-  /** greater_equal.Tensor(self: Tensor, other: Tensor) | greater_equal.Scalar(self: Tensor, other: number) */
+  greater_equal(self: Tensor, other: Tensor): Tensor;
+  greater_equal(self: Tensor, other: unknown): Tensor;
   greater_equal(...args: unknown[]): Tensor;
-  /** greater_equal_.Tensor(self: Tensor, other: Tensor) | greater_equal_.Scalar(self: Tensor, other: number) */
+  greater_equal_(self: Tensor, other: Tensor): Tensor;
+  greater_equal_(self: Tensor, other: unknown): Tensor;
   greater_equal_(...args: unknown[]): Tensor;
-  /** grid_sampler(input: Tensor, grid: Tensor, interpolation_mode: int, padding_mode: int, align_corners: bool) */
   grid_sampler(input: Tensor, grid: Tensor, interpolation_mode: number | bigint, padding_mode: number | bigint, align_corners: boolean): Tensor;
-  /** grid_sampler_2d(input: Tensor, grid: Tensor, interpolation_mode: int, padding_mode: int, align_corners: bool) */
   grid_sampler_2d(input: Tensor, grid: Tensor, interpolation_mode: number | bigint, padding_mode: number | bigint, align_corners: boolean): Tensor;
-  /** grid_sampler_3d(input: Tensor, grid: Tensor, interpolation_mode: int, padding_mode: int, align_corners: bool) */
   grid_sampler_3d(input: Tensor, grid: Tensor, interpolation_mode: number | bigint, padding_mode: number | bigint, align_corners: boolean): Tensor;
-  /** group_norm(input: Tensor, num_groups: int, weight: Optional[Tensor], bias: Optional[Tensor], eps: float, cudnn_enabled: bool) */
   group_norm(input: Tensor, num_groups: number | bigint, weight?: unknown, bias?: unknown, eps?: number, cudnn_enabled?: boolean): Tensor;
-  /** gru.data(data: Tensor, batch_sizes: Tensor, hx: Tensor, params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool) | gru.input(input: Tensor, hx: Tensor, params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, batch_first: bool) */
+  gru(data: Tensor, batch_sizes: Tensor, hx: Tensor, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean): [Tensor, Tensor];
+  gru(input: Tensor, hx: Tensor, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean, batch_first: boolean): [Tensor, Tensor];
   gru(...args: unknown[]): [Tensor, Tensor];
-  /** gru_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih: Optional[Tensor], b_hh: Optional[Tensor]) */
   gru_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih?: unknown, b_hh?: unknown): Tensor;
-  /** gt.Tensor(self: Tensor, other: Tensor) | gt.Scalar(self: Tensor, other: number) */
+  gt(self: Tensor, other: Tensor): Tensor;
+  gt(self: Tensor, other: unknown): Tensor;
   gt(...args: unknown[]): Tensor;
-  /** gt_.Tensor(self: Tensor, other: Tensor) | gt_.Scalar(self: Tensor, other: number) */
+  gt_(self: Tensor, other: Tensor): Tensor;
+  gt_(self: Tensor, other: unknown): Tensor;
   gt_(...args: unknown[]): Tensor;
-  /** hamming_window.periodic(window_length: int, periodic: bool, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | hamming_window.periodic_alpha(window_length: int, periodic: bool, alpha: float, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | hamming_window(window_length: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | hamming_window.periodic_alpha_beta(window_length: int, periodic: bool, alpha: float, beta: float, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  hamming_window(window_length: number | bigint, periodic: boolean, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  hamming_window(window_length: number | bigint, periodic: boolean, alpha: number, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  hamming_window(window_length: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  hamming_window(window_length: number | bigint, periodic: boolean, alpha: number, beta: number, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   hamming_window(...args: unknown[]): Tensor;
-  /** hann_window(window_length: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | hann_window.periodic(window_length: int, periodic: bool, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  hann_window(window_length: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  hann_window(window_length: number | bigint, periodic: boolean, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   hann_window(...args: unknown[]): Tensor;
-  /** hardshrink(self: Tensor, lambd: number) */
   hardshrink(self: Tensor, lambd?: unknown): Tensor;
-  /** hardsigmoid(self: Tensor) */
   hardsigmoid(self: Tensor): Tensor;
-  /** hardsigmoid_(self: Tensor) */
   hardsigmoid_(self: Tensor): Tensor;
-  /** hardswish(self: Tensor) */
   hardswish(self: Tensor): Tensor;
-  /** hardswish_(self: Tensor) */
   hardswish_(self: Tensor): Tensor;
-  /** hardtanh(self: Tensor, min_val: number, max_val: number) */
   hardtanh(self: Tensor, min_val?: unknown, max_val?: unknown): Tensor;
-  /** hardtanh_(self: Tensor, min_val: number, max_val: number) */
   hardtanh_(self: Tensor, min_val?: unknown, max_val?: unknown): Tensor;
-  /** hash_tensor(self: Tensor, dim: List[int], keepdim: bool, mode: int) */
   hash_tensor(self: Tensor, dim?: unknown, options?: { keepdim?: boolean; mode?: number | bigint }): Tensor;
-  /** heaviside(self: Tensor, values: Tensor) */
   heaviside(self: Tensor, values: Tensor): Tensor;
-  /** heaviside_(self: Tensor, values: Tensor) */
   heaviside_(self: Tensor, values: Tensor): Tensor;
-  /** hinge_embedding_loss(self: Tensor, target: Tensor, margin: float, reduction: int) */
   hinge_embedding_loss(self: Tensor, target: Tensor, margin?: number, reduction?: number | bigint): Tensor;
-  /** histc(self: Tensor, bins: int, min: number, max: number) */
   histc(self: Tensor, bins?: number | bigint, min?: unknown, max?: unknown): Tensor;
-  /** histogram.bin_ct(self: Tensor, bins: int, range: Optional[List[float]], weight: Optional[Tensor], density: bool) | histogram.bins_tensor(self: Tensor, bins: Tensor, weight: Optional[Tensor], density: bool) */
+  histogram(self: Tensor, bins?: number | bigint, options?: { range?: unknown; weight?: unknown; density?: boolean }): [Tensor, Tensor];
+  histogram(self: Tensor, bins: Tensor, options?: { weight?: unknown; density?: boolean }): [Tensor, Tensor];
   histogram(...args: unknown[]): [Tensor, Tensor];
-  /** histogramdd.int_bins(self: Tensor, bins: int, range: Optional[List[float]], weight: Optional[Tensor], density: bool) | histogramdd(self: Tensor, bins: List[int], range: Optional[List[float]], weight: Optional[Tensor], density: bool) | histogramdd.TensorList_bins(self: Tensor, bins: List[Tensor], range: Optional[List[float]], weight: Optional[Tensor], density: bool) */
+  histogramdd(self: Tensor, bins: number | bigint, range?: unknown, weight?: unknown, density?: boolean): [Tensor, unknown];
+  histogramdd(self: Tensor, bins: unknown, range?: unknown, weight?: unknown, density?: boolean): [Tensor, unknown];
   histogramdd(...args: unknown[]): [Tensor, unknown];
-  /** hsplit.array(self: Tensor, indices: List[int]) | hsplit.int(self: Tensor, sections: int) */
+  hsplit(self: Tensor, indices: unknown): unknown;
+  hsplit(self: Tensor, sections: number | bigint): unknown;
   hsplit(...args: unknown[]): unknown;
-  /** hspmm(mat1: Tensor, mat2: Tensor) */
   hspmm(mat1: Tensor, mat2: Tensor): Tensor;
-  /** hstack(tensors: List[Tensor]) */
   hstack(tensors: unknown): Tensor;
-  /** huber_loss(self: Tensor, target: Tensor, reduction: int, delta: float) */
   huber_loss(self: Tensor, target: Tensor, reduction?: number | bigint, delta?: number): Tensor;
-  /** hypot(self: Tensor, other: Tensor) */
   hypot(self: Tensor, other: Tensor): Tensor;
-  /** hypot_(self: Tensor, other: Tensor) */
   hypot_(self: Tensor, other: Tensor): Tensor;
-  /** i0(self: Tensor) */
   i0(self: Tensor): Tensor;
-  /** i0_(self: Tensor) */
   i0_(self: Tensor): Tensor;
-  /** igamma(self: Tensor, other: Tensor) */
   igamma(self: Tensor, other: Tensor): Tensor;
-  /** igamma_(self: Tensor, other: Tensor) */
   igamma_(self: Tensor, other: Tensor): Tensor;
-  /** igammac(self: Tensor, other: Tensor) */
   igammac(self: Tensor, other: Tensor): Tensor;
-  /** igammac_(self: Tensor, other: Tensor) */
   igammac_(self: Tensor, other: Tensor): Tensor;
-  /** im2col(self: Tensor, kernel_size: List[int], dilation: List[int], padding: List[int], stride: List[int]) */
   im2col(self: Tensor, kernel_size: unknown, dilation: unknown, padding: unknown, stride: unknown): Tensor;
-  /** imag(self: Tensor) */
   imag(self: Tensor): Tensor;
-  /** index.Tensor(self: Tensor, indices: List[Optional[Tensor]]) */
   index(self: Tensor, indices: unknown): Tensor;
-  /** index_add(self: Tensor, dim: int, index: Tensor, source: Tensor, alpha: number) */
   index_add(self: Tensor, dim: number | bigint, index: Tensor, source: Tensor, options?: { alpha?: unknown }): Tensor;
-  /** index_add_(self: Tensor, dim: int, index: Tensor, source: Tensor, alpha: number) */
   index_add_(self: Tensor, dim: number | bigint, index: Tensor, source: Tensor, options?: { alpha?: unknown }): Tensor;
-  /** index_copy(self: Tensor, dim: int, index: Tensor, source: Tensor) */
   index_copy(self: Tensor, dim: number | bigint, index: Tensor, source: Tensor): Tensor;
-  /** index_copy_(self: Tensor, dim: int, index: Tensor, source: Tensor) */
   index_copy_(self: Tensor, dim: number | bigint, index: Tensor, source: Tensor): Tensor;
-  /** index_fill.int_Tensor(self: Tensor, dim: int, index: Tensor, value: Tensor) | index_fill.int_Scalar(self: Tensor, dim: int, index: Tensor, value: number) */
+  index_fill(self: Tensor, dim: number | bigint, index: Tensor, value: Tensor): Tensor;
+  index_fill(self: Tensor, dim: number | bigint, index: Tensor, value: unknown): Tensor;
   index_fill(...args: unknown[]): Tensor;
-  /** index_fill_.int_Tensor(self: Tensor, dim: int, index: Tensor, value: Tensor) | index_fill_.int_Scalar(self: Tensor, dim: int, index: Tensor, value: number) */
+  index_fill_(self: Tensor, dim: number | bigint, index: Tensor, value: Tensor): Tensor;
+  index_fill_(self: Tensor, dim: number | bigint, index: Tensor, value: unknown): Tensor;
   index_fill_(...args: unknown[]): Tensor;
-  /** index_put(self: Tensor, indices: List[Optional[Tensor]], values: Tensor, accumulate: bool) */
   index_put(self: Tensor, indices: unknown, values: Tensor, accumulate?: boolean): Tensor;
-  /** index_put_(self: Tensor, indices: List[Optional[Tensor]], values: Tensor, accumulate: bool) */
   index_put_(self: Tensor, indices: unknown, values: Tensor, accumulate?: boolean): Tensor;
-  /** index_reduce(self: Tensor, dim: int, index: Tensor, source: Tensor, reduce: str, include_self: bool) */
   index_reduce(self: Tensor, dim: number | bigint, index: Tensor, source: Tensor, reduce: string, options?: { include_self?: boolean }): Tensor;
-  /** index_reduce_(self: Tensor, dim: int, index: Tensor, source: Tensor, reduce: str, include_self: bool) */
   index_reduce_(self: Tensor, dim: number | bigint, index: Tensor, source: Tensor, reduce: string, options?: { include_self?: boolean }): Tensor;
-  /** index_select(self: Tensor, dim: int, index: Tensor) */
   index_select(self: Tensor, dim: number | bigint, index: Tensor): Tensor;
-  /** indices(self: Tensor) */
   indices(self: Tensor): Tensor;
-  /** indices_copy(self: Tensor) */
   indices_copy(self: Tensor): Tensor;
-  /** inner(self: Tensor, other: Tensor) */
   inner(self: Tensor, other: Tensor): Tensor;
-  /** instance_norm(input: Tensor, weight: Optional[Tensor], bias: Optional[Tensor], running_mean: Optional[Tensor], running_var: Optional[Tensor], use_input_stats: bool, momentum: float, eps: float, cudnn_enabled: bool) */
   instance_norm(input: Tensor, weight: unknown, bias: unknown, running_mean: unknown, running_var: unknown, use_input_stats: boolean, momentum: number, eps: number, cudnn_enabled: boolean): Tensor;
-  /** int_repr(self: Tensor) */
   int_repr(self: Tensor): Tensor;
-  /** inverse(self: Tensor) */
   inverse(self: Tensor): Tensor;
-  /** is_coalesced(self: Tensor) */
   is_coalesced(self: Tensor): boolean;
-  /** is_complex(self: Tensor) */
   is_complex(self: Tensor): boolean;
-  /** is_conj(self: Tensor) */
   is_conj(self: Tensor): boolean;
-  /** is_contiguous(self: Tensor) | is_contiguous.memory_format(self: Tensor, memory_format: int) */
+  is_contiguous(self: Tensor): boolean;
+  is_contiguous(self: Tensor, memory_format: string | number): boolean;
   is_contiguous(...args: unknown[]): boolean;
-  /** is_distributed(self: Tensor) */
   is_distributed(self: Tensor): boolean;
-  /** is_floating_point(self: Tensor) */
   is_floating_point(self: Tensor): boolean;
-  /** is_inference(self: Tensor) */
   is_inference(self: Tensor): boolean;
-  /** is_leaf(self: Tensor) */
   is_leaf(self: Tensor): boolean;
-  /** is_neg(self: Tensor) */
   is_neg(self: Tensor): boolean;
-  /** is_nonzero(self: Tensor) */
   is_nonzero(self: Tensor): boolean;
-  /** is_pinned(self: Tensor, device: Optional[Device]) */
   is_pinned(self: Tensor, device?: unknown): boolean;
-  /** is_same_size(self: Tensor, other: Tensor) */
   is_same_size(self: Tensor, other: Tensor): boolean;
-  /** is_set_to(self: Tensor, tensor: Tensor) */
   is_set_to(self: Tensor, tensor: Tensor): boolean;
-  /** is_signed(self: Tensor) */
   is_signed(self: Tensor): boolean;
-  /** is_vulkan_available() */
   is_vulkan_available(): boolean;
-  /** isclose(self: Tensor, other: Tensor, rtol: float, atol: float, equal_nan: bool) */
   isclose(self: Tensor, other: Tensor, rtol?: number, atol?: number, equal_nan?: boolean): Tensor;
-  /** isfinite(self: Tensor) */
   isfinite(self: Tensor): Tensor;
-  /** isin.Scalar_Tensor(element: number, test_elements: Tensor, assume_unique: bool, invert: bool) | isin.Tensor_Scalar(elements: Tensor, test_element: number, assume_unique: bool, invert: bool) | isin.Tensor_Tensor(elements: Tensor, test_elements: Tensor, assume_unique: bool, invert: bool) */
+  isin(element: unknown, test_elements: Tensor, options?: { assume_unique?: boolean; invert?: boolean }): Tensor;
+  isin(elements: Tensor, test_element: unknown, options?: { assume_unique?: boolean; invert?: boolean }): Tensor;
+  isin(elements: Tensor, test_elements: Tensor, options?: { assume_unique?: boolean; invert?: boolean }): Tensor;
   isin(...args: unknown[]): Tensor;
-  /** isinf(self: Tensor) */
   isinf(self: Tensor): Tensor;
-  /** isnan(self: Tensor) */
   isnan(self: Tensor): Tensor;
-  /** isneginf(self: Tensor) */
   isneginf(self: Tensor): Tensor;
-  /** isposinf(self: Tensor) */
   isposinf(self: Tensor): Tensor;
-  /** isreal(self: Tensor) */
   isreal(self: Tensor): Tensor;
-  /** istft(self: Tensor, n_fft: int, hop_length: Optional[int], win_length: Optional[int], window: Optional[Tensor], center: bool, normalized: bool, onesided: Optional[bool], length: Optional[int], return_complex: bool) */
   istft(self: Tensor, n_fft: number | bigint, hop_length?: unknown, win_length?: unknown, window?: unknown, center?: boolean, normalized?: boolean, onesided?: unknown, length?: unknown, return_complex?: boolean): Tensor;
-  /** item(self: Tensor) */
   item(self: Tensor): unknown;
-  /** kaiser_window(window_length: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | kaiser_window.beta(window_length: int, periodic: bool, beta: float, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | kaiser_window.periodic(window_length: int, periodic: bool, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  kaiser_window(window_length: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  kaiser_window(window_length: number | bigint, periodic: boolean, beta: number, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  kaiser_window(window_length: number | bigint, periodic: boolean, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   kaiser_window(...args: unknown[]): Tensor;
-  /** kl_div(self: Tensor, target: Tensor, reduction: int, log_target: bool) */
   kl_div(self: Tensor, target: Tensor, reduction?: number | bigint, options?: { log_target?: boolean }): Tensor;
-  /** kron(self: Tensor, other: Tensor) */
   kron(self: Tensor, other: Tensor): Tensor;
-  /** kthvalue(self: Tensor, k: int, dim: int, keepdim: bool) | kthvalue.values(self: Tensor, k: int, dim: int, keepdim: bool, values: Tensor, indices: Tensor) */
+  kthvalue(self: Tensor, k: number | bigint, dim?: number | bigint, keepdim?: boolean): [Tensor, Tensor];
+  kthvalue(self: Tensor, k: number | bigint, dim?: number | bigint, keepdim?: boolean, options?: { values?: Tensor; indices?: Tensor }): [Tensor, Tensor];
   kthvalue(...args: unknown[]): [Tensor, Tensor];
-  /** l1_loss(self: Tensor, target: Tensor, reduction: int) */
   l1_loss(self: Tensor, target: Tensor, reduction?: number | bigint): Tensor;
-  /** layer_norm(input: Tensor, normalized_shape: List[int], weight: Optional[Tensor], bias: Optional[Tensor], eps: float, cudnn_enable: bool) */
   layer_norm(input: Tensor, normalized_shape: unknown, weight?: unknown, bias?: unknown, eps?: number, cudnn_enable?: boolean): Tensor;
-  /** lcm(self: Tensor, other: Tensor) */
   lcm(self: Tensor, other: Tensor): Tensor;
-  /** lcm_(self: Tensor, other: Tensor) */
   lcm_(self: Tensor, other: Tensor): Tensor;
-  /** ldexp.Tensor(self: Tensor, other: Tensor) */
   ldexp(self: Tensor, other: Tensor): Tensor;
-  /** ldexp_(self: Tensor, other: Tensor) */
   ldexp_(self: Tensor, other: Tensor): Tensor;
-  /** le.Tensor(self: Tensor, other: Tensor) | le.Scalar(self: Tensor, other: number) */
+  le(self: Tensor, other: Tensor): Tensor;
+  le(self: Tensor, other: unknown): Tensor;
   le(...args: unknown[]): Tensor;
-  /** le_.Tensor(self: Tensor, other: Tensor) | le_.Scalar(self: Tensor, other: number) */
+  le_(self: Tensor, other: Tensor): Tensor;
+  le_(self: Tensor, other: unknown): Tensor;
   le_(...args: unknown[]): Tensor;
-  /** leaky_relu(self: Tensor, negative_slope: number) */
   leaky_relu(self: Tensor, negative_slope?: unknown): Tensor;
-  /** leaky_relu_(self: Tensor, negative_slope: number) */
   leaky_relu_(self: Tensor, negative_slope?: unknown): Tensor;
-  /** lerp.Tensor(self: Tensor, end: Tensor, weight: Tensor) | lerp.Scalar(self: Tensor, end: Tensor, weight: number) */
+  lerp(self: Tensor, end: Tensor, weight: Tensor): Tensor;
+  lerp(self: Tensor, end: Tensor, weight: unknown): Tensor;
   lerp(...args: unknown[]): Tensor;
-  /** lerp_.Tensor(self: Tensor, end: Tensor, weight: Tensor) | lerp_.Scalar(self: Tensor, end: Tensor, weight: number) */
+  lerp_(self: Tensor, end: Tensor, weight: Tensor): Tensor;
+  lerp_(self: Tensor, end: Tensor, weight: unknown): Tensor;
   lerp_(...args: unknown[]): Tensor;
-  /** less.Scalar(self: Tensor, other: number) | less.Tensor(self: Tensor, other: Tensor) */
+  less(self: Tensor, other: unknown): Tensor;
+  less(self: Tensor, other: Tensor): Tensor;
   less(...args: unknown[]): Tensor;
-  /** less_.Tensor(self: Tensor, other: Tensor) | less_.Scalar(self: Tensor, other: number) */
+  less_(self: Tensor, other: Tensor): Tensor;
+  less_(self: Tensor, other: unknown): Tensor;
   less_(...args: unknown[]): Tensor;
-  /** less_equal.Tensor(self: Tensor, other: Tensor) | less_equal.Scalar(self: Tensor, other: number) */
+  less_equal(self: Tensor, other: Tensor): Tensor;
+  less_equal(self: Tensor, other: unknown): Tensor;
   less_equal(...args: unknown[]): Tensor;
-  /** less_equal_.Tensor(self: Tensor, other: Tensor) | less_equal_.Scalar(self: Tensor, other: number) */
+  less_equal_(self: Tensor, other: Tensor): Tensor;
+  less_equal_(self: Tensor, other: unknown): Tensor;
   less_equal_(...args: unknown[]): Tensor;
-  /** lgamma(self: Tensor) */
   lgamma(self: Tensor): Tensor;
-  /** lgamma_(self: Tensor) */
   lgamma_(self: Tensor): Tensor;
-  /** lift(self: Tensor) */
   lift(self: Tensor): Tensor;
-  /** lift_fresh(self: Tensor) */
   lift_fresh(self: Tensor): Tensor;
-  /** lift_fresh_copy(self: Tensor) */
   lift_fresh_copy(self: Tensor): Tensor;
-  /** linalg__powsum(self: Tensor, ord: number, dim: Optional[List[int]], keepdim: bool, dtype: Optional[int]) */
   linalg__powsum(self: Tensor, ord?: unknown, dim?: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
-  /** linalg_cholesky(self: Tensor, upper: bool) */
   linalg_cholesky(self: Tensor, options?: { upper?: boolean }): Tensor;
-  /** linalg_cholesky_ex(self: Tensor, upper: bool, check_errors: bool) | linalg_cholesky_ex.L(self: Tensor, upper: bool, check_errors: bool, L: Tensor, info: Tensor) */
+  linalg_cholesky_ex(self: Tensor, options?: { upper?: boolean; check_errors?: boolean }): [Tensor, Tensor];
+  linalg_cholesky_ex(self: Tensor, options?: { upper?: boolean; check_errors?: boolean; L?: Tensor; info?: Tensor }): [Tensor, Tensor];
   linalg_cholesky_ex(...args: unknown[]): [Tensor, Tensor];
-  /** linalg_cond.p_str(self: Tensor, p: str) | linalg_cond(self: Tensor, p: Optional[number]) */
+  linalg_cond(self: Tensor, p: string): Tensor;
+  linalg_cond(self: Tensor, p?: unknown): Tensor;
   linalg_cond(...args: unknown[]): Tensor;
-  /** linalg_cross(self: Tensor, other: Tensor, dim: int) */
   linalg_cross(self: Tensor, other: Tensor, options?: { dim?: number | bigint }): Tensor;
-  /** linalg_det(A: Tensor) */
   linalg_det(A: Tensor): Tensor;
-  /** linalg_diagonal(A: Tensor, offset: int, dim1: int, dim2: int) */
   linalg_diagonal(A: Tensor, options?: { offset?: number | bigint; dim1?: number | bigint; dim2?: number | bigint }): Tensor;
-  /** linalg_eig(self: Tensor) */
   linalg_eig(self: Tensor): [Tensor, Tensor];
-  /** linalg_eigh(self: Tensor, UPLO: str) | linalg_eigh.eigvals(self: Tensor, UPLO: str, eigvals: Tensor, eigvecs: Tensor) */
+  linalg_eigh(self: Tensor, UPLO?: string): [Tensor, Tensor];
+  linalg_eigh(self: Tensor, UPLO?: string, options?: { eigvals?: Tensor; eigvecs?: Tensor }): [Tensor, Tensor];
   linalg_eigh(...args: unknown[]): [Tensor, Tensor];
-  /** linalg_eigvals(self: Tensor) */
   linalg_eigvals(self: Tensor): Tensor;
-  /** linalg_eigvalsh(self: Tensor, UPLO: str) */
   linalg_eigvalsh(self: Tensor, UPLO?: string): Tensor;
-  /** linalg_householder_product(input: Tensor, tau: Tensor) */
   linalg_householder_product(input: Tensor, tau: Tensor): Tensor;
-  /** linalg_inv(A: Tensor) */
   linalg_inv(A: Tensor): Tensor;
-  /** linalg_inv_ex(A: Tensor, check_errors: bool) | linalg_inv_ex.inverse(A: Tensor, check_errors: bool, inverse: Tensor, info: Tensor) */
+  linalg_inv_ex(A: Tensor, options?: { check_errors?: boolean }): [Tensor, Tensor];
+  linalg_inv_ex(A: Tensor, options?: { check_errors?: boolean; inverse?: Tensor; info?: Tensor }): [Tensor, Tensor];
   linalg_inv_ex(...args: unknown[]): [Tensor, Tensor];
-  /** linalg_ldl_factor(self: Tensor, hermitian: bool) */
   linalg_ldl_factor(self: Tensor, options?: { hermitian?: boolean }): [Tensor, Tensor];
-  /** linalg_ldl_factor_ex(self: Tensor, hermitian: bool, check_errors: bool) */
   linalg_ldl_factor_ex(self: Tensor, options?: { hermitian?: boolean; check_errors?: boolean }): [Tensor, Tensor, Tensor];
-  /** linalg_ldl_solve(LD: Tensor, pivots: Tensor, B: Tensor, hermitian: bool) */
   linalg_ldl_solve(LD: Tensor, pivots: Tensor, B: Tensor, options?: { hermitian?: boolean }): Tensor;
-  /** linalg_lstsq(self: Tensor, b: Tensor, rcond: Optional[float], driver: Optional[str]) */
   linalg_lstsq(self: Tensor, b: Tensor, rcond?: unknown, options?: { driver?: unknown }): [Tensor, Tensor, Tensor, Tensor];
-  /** linalg_lu(A: Tensor, pivot: bool) */
   linalg_lu(A: Tensor, options?: { pivot?: boolean }): [Tensor, Tensor, Tensor];
-  /** linalg_lu_factor(A: Tensor, pivot: bool) */
   linalg_lu_factor(A: Tensor, options?: { pivot?: boolean }): [Tensor, Tensor];
-  /** linalg_lu_factor_ex(A: Tensor, pivot: bool, check_errors: bool) */
   linalg_lu_factor_ex(A: Tensor, options?: { pivot?: boolean; check_errors?: boolean }): [Tensor, Tensor, Tensor];
-  /** linalg_lu_solve(LU: Tensor, pivots: Tensor, B: Tensor, left: bool, adjoint: bool) */
   linalg_lu_solve(LU: Tensor, pivots: Tensor, B: Tensor, options?: { left?: boolean; adjoint?: boolean }): Tensor;
-  /** linalg_matmul(self: Tensor, other: Tensor) */
   linalg_matmul(self: Tensor, other: Tensor): Tensor;
-  /** linalg_matrix_exp(self: Tensor) */
   linalg_matrix_exp(self: Tensor): Tensor;
-  /** linalg_matrix_norm(self: Tensor, ord: number, dim: List[int], keepdim: bool, dtype: Optional[int]) | linalg_matrix_norm.str_ord(self: Tensor, ord: str, dim: List[int], keepdim: bool, dtype: Optional[int]) */
+  linalg_matrix_norm(self: Tensor, ord: unknown, dim?: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
+  linalg_matrix_norm(self: Tensor, ord?: string, dim?: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
   linalg_matrix_norm(...args: unknown[]): Tensor;
-  /** linalg_matrix_power(self: Tensor, n: int) */
   linalg_matrix_power(self: Tensor, n: number | bigint): Tensor;
-  /** linalg_matrix_rank.atol_rtol_tensor(input: Tensor, atol: Optional[Tensor], rtol: Optional[Tensor], hermitian: bool) | linalg_matrix_rank(self: Tensor, tol: float, hermitian: bool) | linalg_matrix_rank.atol_rtol_float(self: Tensor, atol: Optional[float], rtol: Optional[float], hermitian: bool) | linalg_matrix_rank.tol_tensor(input: Tensor, tol: Tensor, hermitian: bool) */
+  linalg_matrix_rank(input: Tensor, options?: { atol?: unknown; rtol?: unknown; hermitian?: boolean }): Tensor;
+  linalg_matrix_rank(self: Tensor, tol: number, hermitian?: boolean): Tensor;
+  linalg_matrix_rank(self: Tensor, options?: { atol?: unknown; rtol?: unknown; hermitian?: boolean }): Tensor;
+  linalg_matrix_rank(input: Tensor, tol: Tensor, hermitian?: boolean): Tensor;
   linalg_matrix_rank(...args: unknown[]): Tensor;
-  /** linalg_matrix_sqrth(self: Tensor) */
   linalg_matrix_sqrth(self: Tensor): Tensor;
-  /** linalg_multi_dot(tensors: List[Tensor]) */
   linalg_multi_dot(tensors: unknown): Tensor;
-  /** linalg_norm.ord_str(self: Tensor, ord: str, dim: Optional[List[int]], keepdim: bool, dtype: Optional[int]) | linalg_norm(self: Tensor, ord: Optional[number], dim: Optional[List[int]], keepdim: bool, dtype: Optional[int]) */
+  linalg_norm(self: Tensor, ord: string, dim?: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
+  linalg_norm(self: Tensor, ord?: unknown, dim?: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
   linalg_norm(...args: unknown[]): Tensor;
-  /** linalg_pinv(self: Tensor, rcond: float, hermitian: bool) | linalg_pinv.atol_rtol_float(self: Tensor, atol: Optional[float], rtol: Optional[float], hermitian: bool) | linalg_pinv.rcond_tensor(self: Tensor, rcond: Tensor, hermitian: bool) | linalg_pinv.atol_rtol_tensor(self: Tensor, atol: Optional[Tensor], rtol: Optional[Tensor], hermitian: bool) */
+  linalg_pinv(self: Tensor, rcond: number, hermitian?: boolean): Tensor;
+  linalg_pinv(self: Tensor, options?: { atol?: unknown; rtol?: unknown; hermitian?: boolean }): Tensor;
+  linalg_pinv(self: Tensor, rcond: Tensor, hermitian?: boolean): Tensor;
   linalg_pinv(...args: unknown[]): Tensor;
-  /** linalg_polar(A: Tensor) */
   linalg_polar(A: Tensor): [Tensor, Tensor];
-  /** linalg_qr(A: Tensor, mode: str) */
   linalg_qr(A: Tensor, mode?: string): [Tensor, Tensor];
-  /** linalg_slogdet(A: Tensor) */
   linalg_slogdet(A: Tensor): [Tensor, Tensor];
-  /** linalg_solve(A: Tensor, B: Tensor, left: bool) */
   linalg_solve(A: Tensor, B: Tensor, options?: { left?: boolean }): Tensor;
-  /** linalg_solve_ex(A: Tensor, B: Tensor, left: bool, check_errors: bool) */
   linalg_solve_ex(A: Tensor, B: Tensor, options?: { left?: boolean; check_errors?: boolean }): [Tensor, Tensor];
-  /** linalg_solve_triangular(self: Tensor, B: Tensor, upper: bool, left: bool, unitriangular: bool) */
   linalg_solve_triangular(self: Tensor, B: Tensor, options?: { upper?: boolean; left?: boolean; unitriangular?: boolean }): Tensor;
-  /** linalg_svd.U(A: Tensor, full_matrices: bool, driver: Optional[str], U: Tensor, S: Tensor, Vh: Tensor) | linalg_svd(A: Tensor, full_matrices: bool, driver: Optional[str]) */
+  linalg_svd(A: Tensor, full_matrices?: boolean, options?: { driver?: unknown; U?: Tensor; S?: Tensor; Vh?: Tensor }): [Tensor, Tensor, Tensor];
+  linalg_svd(A: Tensor, full_matrices?: boolean, options?: { driver?: unknown }): [Tensor, Tensor, Tensor];
   linalg_svd(...args: unknown[]): [Tensor, Tensor, Tensor];
-  /** linalg_svdvals(A: Tensor, driver: Optional[str]) */
   linalg_svdvals(A: Tensor, options?: { driver?: unknown }): Tensor;
-  /** linalg_tensorinv(self: Tensor, ind: int) */
   linalg_tensorinv(self: Tensor, ind?: number | bigint): Tensor;
-  /** linalg_tensorsolve(self: Tensor, other: Tensor, dims: Optional[List[int]]) */
   linalg_tensorsolve(self: Tensor, other: Tensor, dims?: unknown): Tensor;
-  /** linalg_vander(x: Tensor, N: Optional[int]) */
   linalg_vander(x: Tensor, options?: { N?: unknown }): Tensor;
-  /** linalg_vecdot(x: Tensor, y: Tensor, dim: int) */
   linalg_vecdot(x: Tensor, y: Tensor, options?: { dim?: number | bigint }): Tensor;
-  /** linalg_vector_norm(self: Tensor, ord: number, dim: Optional[List[int]], keepdim: bool, dtype: Optional[int]) */
   linalg_vector_norm(self: Tensor, ord?: unknown, dim?: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
-  /** linear(input: Tensor, weight: Tensor, bias: Optional[Tensor]) */
   linear(input: Tensor, weight: Tensor, bias?: unknown): Tensor;
-  /** linspace.Tensor_Tensor(start: Tensor, end: Tensor, steps: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | linspace.Scalar_Tensor(start: number, end: Tensor, steps: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | linspace.Tensor_Scalar(start: Tensor, end: number, steps: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | linspace(start: number, end: number, steps: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  linspace(start: Tensor, end: Tensor, steps: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  linspace(start: unknown, end: Tensor, steps: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  linspace(start: Tensor, end: unknown, steps: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  linspace(start: unknown, end: unknown, steps: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   linspace(...args: unknown[]): Tensor;
-  /** log(self: Tensor) */
   log(self: Tensor): Tensor;
-  /** log10(self: Tensor) */
   log10(self: Tensor): Tensor;
-  /** log10_(self: Tensor) */
   log10_(self: Tensor): Tensor;
-  /** log1p(self: Tensor) */
   log1p(self: Tensor): Tensor;
-  /** log1p_(self: Tensor) */
   log1p_(self: Tensor): Tensor;
-  /** log2(self: Tensor) */
   log2(self: Tensor): Tensor;
-  /** log2_(self: Tensor) */
   log2_(self: Tensor): Tensor;
-  /** log_(self: Tensor) */
   log_(self: Tensor): Tensor;
-  /** log_normal(self: Tensor, mean: float, std: float, generator: Optional[Generator]) */
   log_normal(self: Tensor, mean?: number, std?: number, options?: { generator?: unknown }): Tensor;
-  /** log_normal_(self: Tensor, mean: float, std: float, generator: Optional[Generator]) */
   log_normal_(self: Tensor, mean?: number, std?: number, options?: { generator?: unknown }): Tensor;
-  /** log_sigmoid(self: Tensor) */
   log_sigmoid(self: Tensor): Tensor;
-  /** log_sigmoid_forward(self: Tensor) */
   log_sigmoid_forward(self: Tensor): [Tensor, Tensor];
-  /** log_softmax.int(self: Tensor, dim: int, dtype: Optional[int]) */
   log_softmax(self: Tensor, dim: number | bigint, dtype?: unknown): Tensor;
-  /** logaddexp(self: Tensor, other: Tensor) */
   logaddexp(self: Tensor, other: Tensor): Tensor;
-  /** logaddexp2(self: Tensor, other: Tensor) */
   logaddexp2(self: Tensor, other: Tensor): Tensor;
-  /** logcumsumexp(self: Tensor, dim: int) */
   logcumsumexp(self: Tensor, dim: number | bigint): Tensor;
-  /** logdet(self: Tensor) */
   logdet(self: Tensor): Tensor;
-  /** logical_and(self: Tensor, other: Tensor) */
   logical_and(self: Tensor, other: Tensor): Tensor;
-  /** logical_and_(self: Tensor, other: Tensor) */
   logical_and_(self: Tensor, other: Tensor): Tensor;
-  /** logical_not(self: Tensor) */
   logical_not(self: Tensor): Tensor;
-  /** logical_not_(self: Tensor) */
   logical_not_(self: Tensor): Tensor;
-  /** logical_or(self: Tensor, other: Tensor) */
   logical_or(self: Tensor, other: Tensor): Tensor;
-  /** logical_or_(self: Tensor, other: Tensor) */
   logical_or_(self: Tensor, other: Tensor): Tensor;
-  /** logical_xor(self: Tensor, other: Tensor) */
   logical_xor(self: Tensor, other: Tensor): Tensor;
-  /** logical_xor_(self: Tensor, other: Tensor) */
   logical_xor_(self: Tensor, other: Tensor): Tensor;
-  /** logit(self: Tensor, eps: Optional[float]) */
   logit(self: Tensor, eps?: unknown): Tensor;
-  /** logit_(self: Tensor, eps: Optional[float]) */
   logit_(self: Tensor, eps?: unknown): Tensor;
-  /** logspace.Tensor_Tensor(start: Tensor, end: Tensor, steps: int, base: float, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | logspace(start: number, end: number, steps: int, base: float, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | logspace.Tensor_Scalar(start: Tensor, end: number, steps: int, base: float, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | logspace.Scalar_Tensor(start: number, end: Tensor, steps: int, base: float, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  logspace(start: Tensor, end: Tensor, steps: number | bigint, base?: number, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  logspace(start: unknown, end: unknown, steps: number | bigint, base?: number, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  logspace(start: Tensor, end: unknown, steps: number | bigint, base?: number, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  logspace(start: unknown, end: Tensor, steps: number | bigint, base?: number, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   logspace(...args: unknown[]): Tensor;
-  /** logsumexp(self: Tensor, dim: List[int], keepdim: bool) */
   logsumexp(self: Tensor, dim: unknown, keepdim?: boolean): Tensor;
-  /** lstm.input(input: Tensor, hx: List[Tensor], params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, batch_first: bool) | lstm.data(data: Tensor, batch_sizes: Tensor, hx: List[Tensor], params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool) */
+  lstm(input: Tensor, hx: unknown, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean, batch_first: boolean): [Tensor, Tensor, Tensor];
+  lstm(data: Tensor, batch_sizes: Tensor, hx: unknown, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean): [Tensor, Tensor, Tensor];
   lstm(...args: unknown[]): [Tensor, Tensor, Tensor];
-  /** lstm_cell(input: Tensor, hx: List[Tensor], w_ih: Tensor, w_hh: Tensor, b_ih: Optional[Tensor], b_hh: Optional[Tensor]) */
   lstm_cell(input: Tensor, hx: unknown, w_ih: Tensor, w_hh: Tensor, b_ih?: unknown, b_hh?: unknown): [Tensor, Tensor];
-  /** lt.Tensor(self: Tensor, other: Tensor) | lt.Scalar(self: Tensor, other: number) */
+  lt(self: Tensor, other: Tensor): Tensor;
+  lt(self: Tensor, other: unknown): Tensor;
   lt(...args: unknown[]): Tensor;
-  /** lt_.Scalar(self: Tensor, other: number) | lt_.Tensor(self: Tensor, other: Tensor) */
+  lt_(self: Tensor, other: unknown): Tensor;
+  lt_(self: Tensor, other: Tensor): Tensor;
   lt_(...args: unknown[]): Tensor;
-  /** lu_solve(self: Tensor, LU_data: Tensor, LU_pivots: Tensor) */
   lu_solve(self: Tensor, LU_data: Tensor, LU_pivots: Tensor): Tensor;
-  /** lu_unpack(LU_data: Tensor, LU_pivots: Tensor, unpack_data: bool, unpack_pivots: bool) */
   lu_unpack(LU_data: Tensor, LU_pivots: Tensor, unpack_data?: boolean, unpack_pivots?: boolean): [Tensor, Tensor, Tensor];
-  /** mH(self: Tensor) */
   mH(self: Tensor): Tensor;
-  /** mT(self: Tensor) */
   mT(self: Tensor): Tensor;
-  /** margin_ranking_loss(input1: Tensor, input2: Tensor, target: Tensor, margin: float, reduction: int) */
   margin_ranking_loss(input1: Tensor, input2: Tensor, target: Tensor, margin?: number, reduction?: number | bigint): Tensor;
-  /** masked_fill.Tensor(self: Tensor, mask: Tensor, value: Tensor) | masked_fill.Scalar(self: Tensor, mask: Tensor, value: number) */
+  masked_fill(self: Tensor, mask: Tensor, value: Tensor): Tensor;
+  masked_fill(self: Tensor, mask: Tensor, value: unknown): Tensor;
   masked_fill(...args: unknown[]): Tensor;
-  /** masked_fill_.Tensor(self: Tensor, mask: Tensor, value: Tensor) | masked_fill_.Scalar(self: Tensor, mask: Tensor, value: number) */
+  masked_fill_(self: Tensor, mask: Tensor, value: Tensor): Tensor;
+  masked_fill_(self: Tensor, mask: Tensor, value: unknown): Tensor;
   masked_fill_(...args: unknown[]): Tensor;
-  /** masked_scatter(self: Tensor, mask: Tensor, source: Tensor) */
   masked_scatter(self: Tensor, mask: Tensor, source: Tensor): Tensor;
-  /** masked_scatter_(self: Tensor, mask: Tensor, source: Tensor) */
   masked_scatter_(self: Tensor, mask: Tensor, source: Tensor): Tensor;
-  /** masked_select(self: Tensor, mask: Tensor) */
   masked_select(self: Tensor, mask: Tensor): Tensor;
-  /** matmul(self: Tensor, other: Tensor) */
   matmul(self: Tensor, other: Tensor): Tensor;
-  /** matrix_H(self: Tensor) */
   matrix_H(self: Tensor): Tensor;
-  /** matrix_exp(self: Tensor) */
   matrix_exp(self: Tensor): Tensor;
-  /** matrix_power(self: Tensor, n: int) */
   matrix_power(self: Tensor, n: number | bigint): Tensor;
-  /** max(self: Tensor) | max.other(self: Tensor, other: Tensor) | max.dim_max(self: Tensor, dim: int, keepdim: bool, max: Tensor, max_values: Tensor) | max.dim(self: Tensor, dim: int, keepdim: bool) */
+  max(self: Tensor): Tensor;
+  max(self: Tensor, other: Tensor): Tensor;
+  max(self: Tensor, dim: number | bigint, keepdim?: boolean, options?: { max?: Tensor; max_values?: Tensor }): [Tensor, Tensor];
+  max(self: Tensor, dim: number | bigint, keepdim?: boolean): [Tensor, Tensor];
   max(...args: unknown[]): Tensor;
-  /** max_pool1d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   max_pool1d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): Tensor;
-  /** max_pool1d_with_indices(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   max_pool1d_with_indices(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): [Tensor, Tensor];
-  /** max_pool2d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   max_pool2d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): Tensor;
-  /** max_pool2d_with_indices(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   max_pool2d_with_indices(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): [Tensor, Tensor];
-  /** max_pool3d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   max_pool3d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): Tensor;
-  /** max_pool3d_with_indices(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   max_pool3d_with_indices(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): [Tensor, Tensor];
-  /** max_unpool2d(self: Tensor, indices: Tensor, output_size: List[int]) */
   max_unpool2d(self: Tensor, indices: Tensor, output_size: unknown): Tensor;
-  /** max_unpool3d(self: Tensor, indices: Tensor, output_size: List[int], stride: List[int], padding: List[int]) */
   max_unpool3d(self: Tensor, indices: Tensor, output_size: unknown, stride: unknown, padding: unknown): Tensor;
-  /** maximum(self: Tensor, other: Tensor) */
   maximum(self: Tensor, other: Tensor): Tensor;
-  /** mean(self: Tensor, dtype: Optional[int]) | mean.dim(self: Tensor, dim: Optional[List[int]], keepdim: bool, dtype: Optional[int]) */
+  mean(self: Tensor, options?: { dtype?: unknown }): Tensor;
+  mean(self: Tensor, dim: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
   mean(...args: unknown[]): Tensor;
-  /** median.dim(self: Tensor, dim: int, keepdim: bool) | median(self: Tensor) | median.dim_values(self: Tensor, dim: int, keepdim: bool, values: Tensor, indices: Tensor) */
+  median(self: Tensor, dim: number | bigint, keepdim?: boolean): [Tensor, Tensor];
+  median(self: Tensor): Tensor;
+  median(self: Tensor, dim: number | bigint, keepdim?: boolean, options?: { values?: Tensor; indices?: Tensor }): [Tensor, Tensor];
   median(...args: unknown[]): Tensor;
-  /** meshgrid(tensors: List[Tensor]) | meshgrid.indexing(tensors: List[Tensor], indexing: str) */
+  meshgrid(tensors: unknown): unknown;
+  meshgrid(tensors: unknown, options?: { indexing?: string }): unknown;
   meshgrid(...args: unknown[]): unknown;
-  /** min.other(self: Tensor, other: Tensor) | min.dim(self: Tensor, dim: int, keepdim: bool) | min.dim_min(self: Tensor, dim: int, keepdim: bool, min: Tensor, min_indices: Tensor) | min(self: Tensor) */
+  min(self: Tensor, other: Tensor): Tensor;
+  min(self: Tensor, dim: number | bigint, keepdim?: boolean): [Tensor, Tensor];
+  min(self: Tensor, dim: number | bigint, keepdim?: boolean, options?: { min?: Tensor; min_indices?: Tensor }): [Tensor, Tensor];
+  min(self: Tensor): Tensor;
   min(...args: unknown[]): Tensor;
-  /** minimum(self: Tensor, other: Tensor) */
   minimum(self: Tensor, other: Tensor): Tensor;
-  /** miopen_batch_norm(input: Tensor, weight: Tensor, bias: Optional[Tensor], running_mean: Optional[Tensor], running_var: Optional[Tensor], training: bool, exponential_average_factor: float, epsilon: float) */
   miopen_batch_norm(input: Tensor, weight: Tensor, bias: unknown, running_mean: unknown, running_var: unknown, training: boolean, exponential_average_factor: number, epsilon: number): [Tensor, Tensor, Tensor];
-  /** miopen_convolution(self: Tensor, weight: Tensor, bias: Optional[Tensor], padding: List[int], stride: List[int], dilation: List[int], groups: int, benchmark: bool, deterministic: bool) */
   miopen_convolution(self: Tensor, weight: Tensor, bias: unknown, padding: unknown, stride: unknown, dilation: unknown, groups: number | bigint, benchmark: boolean, deterministic: boolean): Tensor;
-  /** miopen_convolution_add_relu(self: Tensor, weight: Tensor, z: Tensor, alpha: Optional[number], bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int], groups: int) */
   miopen_convolution_add_relu(self: Tensor, weight: Tensor, z: Tensor, alpha: unknown, bias: unknown, stride: unknown, padding: unknown, dilation: unknown, groups: number | bigint): Tensor;
-  /** miopen_convolution_relu(self: Tensor, weight: Tensor, bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int], groups: int) */
   miopen_convolution_relu(self: Tensor, weight: Tensor, bias: unknown, stride: unknown, padding: unknown, dilation: unknown, groups: number | bigint): Tensor;
-  /** miopen_convolution_transpose(self: Tensor, weight: Tensor, bias: Optional[Tensor], padding: List[int], output_padding: List[int], stride: List[int], dilation: List[int], groups: int, benchmark: bool, deterministic: bool) */
   miopen_convolution_transpose(self: Tensor, weight: Tensor, bias: unknown, padding: unknown, output_padding: unknown, stride: unknown, dilation: unknown, groups: number | bigint, benchmark: boolean, deterministic: boolean): Tensor;
-  /** miopen_ctc_loss.Tensor(log_probs: Tensor, targets: Tensor, input_lengths: Tensor, target_lengths: Tensor, blank: int, deterministic: bool, zero_infinity: bool) | miopen_ctc_loss(log_probs: Tensor, targets: Tensor, input_lengths: List[int], target_lengths: List[int], blank: int, deterministic: bool, zero_infinity: bool) */
+  miopen_ctc_loss(log_probs: Tensor, targets: Tensor, input_lengths: Tensor, target_lengths: Tensor, blank: number | bigint, deterministic: boolean, zero_infinity: boolean): [Tensor, Tensor];
+  miopen_ctc_loss(log_probs: Tensor, targets: Tensor, input_lengths: unknown, target_lengths: unknown, blank: number | bigint, deterministic: boolean, zero_infinity: boolean): [Tensor, Tensor];
   miopen_ctc_loss(...args: unknown[]): [Tensor, Tensor];
-  /** miopen_depthwise_convolution(self: Tensor, weight: Tensor, bias: Optional[Tensor], padding: List[int], stride: List[int], dilation: List[int], groups: int, benchmark: bool, deterministic: bool) */
   miopen_depthwise_convolution(self: Tensor, weight: Tensor, bias: unknown, padding: unknown, stride: unknown, dilation: unknown, groups: number | bigint, benchmark: boolean, deterministic: boolean): Tensor;
-  /** miopen_rnn(input: Tensor, weight: List[Tensor], weight_stride0: int, hx: Tensor, cx: Optional[Tensor], mode: int, hidden_size: int, num_layers: int, batch_first: bool, dropout: float, train: bool, bidirectional: bool, batch_sizes: List[int], dropout_state: Optional[Tensor]) */
   miopen_rnn(input: Tensor, weight: unknown, weight_stride0: number | bigint, hx: Tensor, cx: unknown, mode: number | bigint, hidden_size: number | bigint, num_layers: number | bigint, batch_first: boolean, dropout: number, train: boolean, bidirectional: boolean, batch_sizes: unknown, dropout_state: unknown): [Tensor, Tensor, Tensor, Tensor, Tensor];
-  /** mish(self: Tensor) */
   mish(self: Tensor): Tensor;
-  /** mish_(self: Tensor) */
   mish_(self: Tensor): Tensor;
-  /** mkldnn_adaptive_avg_pool2d(self: Tensor, output_size: List[int]) */
   mkldnn_adaptive_avg_pool2d(self: Tensor, output_size: unknown): Tensor;
-  /** mkldnn_convolution(self: Tensor, weight: Tensor, bias: Optional[Tensor], padding: List[int], stride: List[int], dilation: List[int], groups: int) */
   mkldnn_convolution(self: Tensor, weight: Tensor, bias: unknown, padding: unknown, stride: unknown, dilation: unknown, groups: number | bigint): Tensor;
-  /** mkldnn_linear(self: Tensor, weight: Tensor, bias: Optional[Tensor]) */
   mkldnn_linear(self: Tensor, weight: Tensor, bias?: unknown): Tensor;
-  /** mkldnn_linear_backward_input(input_size: List[int], grad_output: Tensor, weight: Tensor) */
   mkldnn_linear_backward_input(input_size: unknown, grad_output: Tensor, weight: Tensor): Tensor;
-  /** mkldnn_linear_backward_weights(grad_output: Tensor, input: Tensor, weight: Tensor, bias_defined: bool) */
   mkldnn_linear_backward_weights(grad_output: Tensor, input: Tensor, weight: Tensor, bias_defined: boolean): [Tensor, Tensor];
-  /** mkldnn_max_pool2d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   mkldnn_max_pool2d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): Tensor;
-  /** mkldnn_max_pool3d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   mkldnn_max_pool3d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): Tensor;
-  /** mkldnn_reorder_conv2d_weight(self: Tensor, padding: List[int], stride: List[int], dilation: List[int], groups: int, input_size: Optional[List[int]]) */
   mkldnn_reorder_conv2d_weight(self: Tensor, padding?: unknown, stride?: unknown, dilation?: unknown, groups?: number | bigint, input_size?: unknown): Tensor;
-  /** mkldnn_reorder_conv3d_weight(self: Tensor, padding: List[int], stride: List[int], dilation: List[int], groups: int, input_size: Optional[List[int]]) */
   mkldnn_reorder_conv3d_weight(self: Tensor, padding?: unknown, stride?: unknown, dilation?: unknown, groups?: number | bigint, input_size?: unknown): Tensor;
-  /** mkldnn_rnn_layer(input: Tensor, weight0: Tensor, weight1: Tensor, weight2: Tensor, weight3: Tensor, hx_: Tensor, cx_: Tensor, reverse: bool, batch_sizes: List[int], mode: int, hidden_size: int, num_layers: int, has_biases: bool, bidirectional: bool, batch_first: bool, train: bool) */
   mkldnn_rnn_layer(input: Tensor, weight0: Tensor, weight1: Tensor, weight2: Tensor, weight3: Tensor, hx_: Tensor, cx_: Tensor, reverse: boolean, batch_sizes: unknown, mode: number | bigint, hidden_size: number | bigint, num_layers: number | bigint, has_biases: boolean, bidirectional: boolean, batch_first: boolean, train: boolean): [Tensor, Tensor, Tensor, Tensor];
-  /** mm.dtype(self: Tensor, mat2: Tensor, out_dtype: int) | mm(self: Tensor, mat2: Tensor) */
+  mm(self: Tensor, mat2: Tensor, out_dtype: DType | number): Tensor;
+  mm(self: Tensor, mat2: Tensor): Tensor;
   mm(...args: unknown[]): Tensor;
-  /** mode.values(self: Tensor, dim: int, keepdim: bool, values: Tensor, indices: Tensor) | mode(self: Tensor, dim: int, keepdim: bool) */
+  mode(self: Tensor, dim?: number | bigint, keepdim?: boolean, options?: { values?: Tensor; indices?: Tensor }): [Tensor, Tensor];
+  mode(self: Tensor, dim?: number | bigint, keepdim?: boolean): [Tensor, Tensor];
   mode(...args: unknown[]): [Tensor, Tensor];
-  /** moveaxis.int(self: Tensor, source: int, destination: int) | moveaxis.intlist(self: Tensor, source: List[int], destination: List[int]) */
+  moveaxis(self: Tensor, source: number | bigint, destination: number | bigint): Tensor;
+  moveaxis(self: Tensor, source: unknown, destination: unknown): Tensor;
   moveaxis(...args: unknown[]): Tensor;
-  /** movedim.int(self: Tensor, source: int, destination: int) | movedim.intlist(self: Tensor, source: List[int], destination: List[int]) */
+  movedim(self: Tensor, source: number | bigint, destination: number | bigint): Tensor;
+  movedim(self: Tensor, source: unknown, destination: unknown): Tensor;
   movedim(...args: unknown[]): Tensor;
-  /** mse_loss(self: Tensor, target: Tensor, reduction: int) */
   mse_loss(self: Tensor, target: Tensor, reduction?: number | bigint): Tensor;
-  /** msort(self: Tensor) */
   msort(self: Tensor): Tensor;
-  /** mul.Tensor(self: Tensor, other: Tensor) | mul.Scalar(self: Tensor, other: number) */
+  mul(self: Tensor, other: Tensor): Tensor;
+  mul(self: Tensor, other: unknown): Tensor;
   mul(...args: unknown[]): Tensor;
-  /** mul_.Tensor(self: Tensor, other: Tensor) | mul_.Scalar(self: Tensor, other: number) */
+  mul_(self: Tensor, other: Tensor): Tensor;
+  mul_(self: Tensor, other: unknown): Tensor;
   mul_(...args: unknown[]): Tensor;
-  /** multi_margin_loss(self: Tensor, target: Tensor, p: number, margin: number, weight: Optional[Tensor], reduction: int) */
   multi_margin_loss(self: Tensor, target: Tensor, p?: unknown, margin?: unknown, weight?: unknown, reduction?: number | bigint): Tensor;
-  /** multilabel_margin_loss(self: Tensor, target: Tensor, reduction: int) */
   multilabel_margin_loss(self: Tensor, target: Tensor, reduction?: number | bigint): Tensor;
-  /** multilabel_margin_loss_forward(self: Tensor, target: Tensor, reduction: int) */
   multilabel_margin_loss_forward(self: Tensor, target: Tensor, reduction: number | bigint): [Tensor, Tensor];
-  /** multinomial(self: Tensor, num_samples: int, replacement: bool, generator: Optional[Generator]) */
   multinomial(self: Tensor, num_samples: number | bigint, replacement?: boolean, options?: { generator?: unknown }): Tensor;
-  /** multiply.Scalar(self: Tensor, other: number) | multiply.Tensor(self: Tensor, other: Tensor) */
+  multiply(self: Tensor, other: unknown): Tensor;
+  multiply(self: Tensor, other: Tensor): Tensor;
   multiply(...args: unknown[]): Tensor;
-  /** multiply_.Scalar(self: Tensor, other: number) | multiply_.Tensor(self: Tensor, other: Tensor) */
+  multiply_(self: Tensor, other: unknown): Tensor;
+  multiply_(self: Tensor, other: Tensor): Tensor;
   multiply_(...args: unknown[]): Tensor;
-  /** mv(self: Tensor, vec: Tensor) */
   mv(self: Tensor, vec: Tensor): Tensor;
-  /** mvlgamma(self: Tensor, p: int) */
   mvlgamma(self: Tensor, p: number | bigint): Tensor;
-  /** mvlgamma_(self: Tensor, p: int) */
   mvlgamma_(self: Tensor, p: number | bigint): Tensor;
-  /** nan_to_num(self: Tensor, nan: Optional[float], posinf: Optional[float], neginf: Optional[float]) */
   nan_to_num(self: Tensor, nan?: unknown, posinf?: unknown, neginf?: unknown): Tensor;
-  /** nan_to_num_(self: Tensor, nan: Optional[float], posinf: Optional[float], neginf: Optional[float]) */
   nan_to_num_(self: Tensor, nan?: unknown, posinf?: unknown, neginf?: unknown): Tensor;
-  /** nanmean(self: Tensor, dim: Optional[List[int]], keepdim: bool, dtype: Optional[int]) */
   nanmean(self: Tensor, dim?: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
-  /** nanmedian(self: Tensor) | nanmedian.dim(self: Tensor, dim: int, keepdim: bool) | nanmedian.dim_values(self: Tensor, dim: int, keepdim: bool, values: Tensor, indices: Tensor) */
+  nanmedian(self: Tensor): Tensor;
+  nanmedian(self: Tensor, dim: number | bigint, keepdim?: boolean): [Tensor, Tensor];
+  nanmedian(self: Tensor, dim: number | bigint, keepdim?: boolean, options?: { values?: Tensor; indices?: Tensor }): [Tensor, Tensor];
   nanmedian(...args: unknown[]): Tensor;
-  /** nanquantile.scalar(self: Tensor, q: float, dim: Optional[int], keepdim: bool, interpolation: str) | nanquantile(self: Tensor, q: Tensor, dim: Optional[int], keepdim: bool, interpolation: str) */
+  nanquantile(self: Tensor, q: number, dim?: unknown, keepdim?: boolean, options?: { interpolation?: string }): Tensor;
+  nanquantile(self: Tensor, q: Tensor, dim?: unknown, keepdim?: boolean, options?: { interpolation?: string }): Tensor;
   nanquantile(...args: unknown[]): Tensor;
-  /** nansum(self: Tensor, dim: Optional[List[int]], keepdim: bool, dtype: Optional[int]) */
   nansum(self: Tensor, dim?: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
-  /** narrow.Tensor(self: Tensor, dim: int, start: Tensor, length: int) | narrow(self: Tensor, dim: int, start: int, length: int) */
+  narrow(self: Tensor, dim: number | bigint, start: Tensor, length: number | bigint): Tensor;
+  narrow(self: Tensor, dim: number | bigint, start: number | bigint, length: number | bigint): Tensor;
   narrow(...args: unknown[]): Tensor;
-  /** narrow_copy(self: Tensor, dim: int, start: int, length: int) */
   narrow_copy(self: Tensor, dim: number | bigint, start: number | bigint, length: number | bigint): Tensor;
-  /** native_batch_norm(input: Tensor, weight: Optional[Tensor], bias: Optional[Tensor], running_mean: Optional[Tensor], running_var: Optional[Tensor], training: bool, momentum: float, eps: float) */
   native_batch_norm(input: Tensor, weight: unknown, bias: unknown, running_mean: unknown, running_var: unknown, training: boolean, momentum: number, eps: number): [Tensor, Tensor, Tensor];
-  /** native_channel_shuffle(self: Tensor, groups: int) */
   native_channel_shuffle(self: Tensor, groups: number | bigint): Tensor;
-  /** native_dropout(input: Tensor, p: float, train: Optional[bool]) */
   native_dropout(input: Tensor, p: number, train: unknown): [Tensor, Tensor];
-  /** native_group_norm(input: Tensor, weight: Optional[Tensor], bias: Optional[Tensor], N: int, C: int, HxW: int, group: int, eps: float) */
   native_group_norm(input: Tensor, weight: unknown, bias: unknown, N: number | bigint, C: number | bigint, HxW: number | bigint, group: number | bigint, eps: number): [Tensor, Tensor, Tensor];
-  /** native_layer_norm(input: Tensor, normalized_shape: List[int], weight: Optional[Tensor], bias: Optional[Tensor], eps: float) */
   native_layer_norm(input: Tensor, normalized_shape: unknown, weight: unknown, bias: unknown, eps: number): [Tensor, Tensor, Tensor];
-  /** native_norm.ScalarOpt_dim_dtype(self: Tensor, p: Optional[number], dim: List[int], keepdim: bool, dtype: Optional[int]) | native_norm(self: Tensor, p: number) */
+  native_norm(self: Tensor, p: unknown, dim: unknown, keepdim: boolean, dtype: unknown): Tensor;
+  native_norm(self: Tensor, p?: unknown): Tensor;
   native_norm(...args: unknown[]): Tensor;
-  /** ne.Scalar(self: Tensor, other: number) | ne.Tensor(self: Tensor, other: Tensor) */
+  ne(self: Tensor, other: unknown): Tensor;
+  ne(self: Tensor, other: Tensor): Tensor;
   ne(...args: unknown[]): Tensor;
-  /** ne_.Scalar(self: Tensor, other: number) | ne_.Tensor(self: Tensor, other: Tensor) */
+  ne_(self: Tensor, other: unknown): Tensor;
+  ne_(self: Tensor, other: Tensor): Tensor;
   ne_(...args: unknown[]): Tensor;
-  /** neg(self: Tensor) */
   neg(self: Tensor): Tensor;
-  /** neg_(self: Tensor) */
   neg_(self: Tensor): Tensor;
-  /** negative(self: Tensor) */
   negative(self: Tensor): Tensor;
-  /** negative_(self: Tensor) */
   negative_(self: Tensor): Tensor;
-  /** nested_to_padded_tensor(self: Tensor, padding: float, output_size: Optional[List[int]]) */
   nested_to_padded_tensor(self: Tensor, padding: number, output_size?: unknown): Tensor;
-  /** new_empty(self: Tensor, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   new_empty(self: Tensor, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** new_empty_strided(self: Tensor, size: List[int], stride: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   new_empty_strided(self: Tensor, size: unknown, stride: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** new_full(self: Tensor, size: List[int], fill_value: number, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   new_full(self: Tensor, size: unknown, fill_value: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** new_ones(self: Tensor, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   new_ones(self: Tensor, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** new_zeros(self: Tensor, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   new_zeros(self: Tensor, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** nextafter(self: Tensor, other: Tensor) */
   nextafter(self: Tensor, other: Tensor): Tensor;
-  /** nextafter_(self: Tensor, other: Tensor) */
   nextafter_(self: Tensor, other: Tensor): Tensor;
-  /** nll_loss(self: Tensor, target: Tensor, weight: Optional[Tensor], reduction: int, ignore_index: int) */
   nll_loss(self: Tensor, target: Tensor, weight?: unknown, reduction?: number | bigint, ignore_index?: number | bigint): Tensor;
-  /** nll_loss2d(self: Tensor, target: Tensor, weight: Optional[Tensor], reduction: int, ignore_index: int) */
   nll_loss2d(self: Tensor, target: Tensor, weight?: unknown, reduction?: number | bigint, ignore_index?: number | bigint): Tensor;
-  /** nll_loss2d_forward(self: Tensor, target: Tensor, weight: Optional[Tensor], reduction: int, ignore_index: int) */
   nll_loss2d_forward(self: Tensor, target: Tensor, weight: unknown, reduction: number | bigint, ignore_index: number | bigint): [Tensor, Tensor];
-  /** nll_loss_forward(self: Tensor, target: Tensor, weight: Optional[Tensor], reduction: int, ignore_index: int) */
   nll_loss_forward(self: Tensor, target: Tensor, weight: unknown, reduction: number | bigint, ignore_index: number | bigint): [Tensor, Tensor];
-  /** nll_loss_nd(self: Tensor, target: Tensor, weight: Optional[Tensor], reduction: int, ignore_index: int) */
   nll_loss_nd(self: Tensor, target: Tensor, weight?: unknown, reduction?: number | bigint, ignore_index?: number | bigint): Tensor;
-  /** nonzero(self: Tensor) */
   nonzero(self: Tensor): Tensor;
-  /** nonzero_numpy(self: Tensor) */
   nonzero_numpy(self: Tensor): unknown;
-  /** nonzero_static(self: Tensor, size: int, fill_value: int) */
   nonzero_static(self: Tensor, options?: { size?: number | bigint; fill_value?: number | bigint }): Tensor;
-  /** norm.Scalar(self: Tensor, p: number) | norm.ScalarOpt_dim_dtype(self: Tensor, p: Optional[number], dim: List[int], keepdim: bool, dtype: int) | norm.ScalarOpt_dtype(self: Tensor, p: Optional[number], dtype: int) | norm.ScalarOpt_dim(self: Tensor, p: Optional[number], dim: List[int], keepdim: bool) */
+  norm(self: Tensor, p?: unknown): Tensor;
+  norm(self: Tensor, p: unknown, dim: unknown, keepdim: boolean, options?: { dtype?: DType | number }): Tensor;
+  norm(self: Tensor, p: unknown, options?: { dtype?: DType | number }): Tensor;
+  norm(self: Tensor, p: unknown, dim: unknown, keepdim?: boolean): Tensor;
   norm(...args: unknown[]): Tensor;
-  /** norm_except_dim(v: Tensor, pow: int, dim: int) */
   norm_except_dim(v: Tensor, pow?: number | bigint, dim?: number | bigint): Tensor;
-  /** normal.float_Tensor(mean: float, std: Tensor, generator: Optional[Generator]) | normal.Tensor_float(mean: Tensor, std: float, generator: Optional[Generator]) | normal.float_float(mean: float, std: float, size: List[int], generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | normal.Tensor_Tensor(mean: Tensor, std: Tensor, generator: Optional[Generator]) */
+  normal(mean: number, std: Tensor, options?: { generator?: unknown }): Tensor;
+  normal(mean: Tensor, std?: number, options?: { generator?: unknown }): Tensor;
+  normal(mean: number, std: number, size: unknown, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  normal(mean: Tensor, std: Tensor, options?: { generator?: unknown }): Tensor;
   normal(...args: unknown[]): Tensor;
-  /** normal_(self: Tensor, mean: float, std: float, generator: Optional[Generator]) */
   normal_(self: Tensor, mean?: number, std?: number, options?: { generator?: unknown }): Tensor;
-  /** normal_functional(self: Tensor, mean: float, std: float, generator: Optional[Generator]) */
   normal_functional(self: Tensor, mean?: number, std?: number, options?: { generator?: unknown }): Tensor;
-  /** not_equal.Tensor(self: Tensor, other: Tensor) | not_equal.Scalar(self: Tensor, other: number) */
+  not_equal(self: Tensor, other: Tensor): Tensor;
+  not_equal(self: Tensor, other: unknown): Tensor;
   not_equal(...args: unknown[]): Tensor;
-  /** not_equal_.Tensor(self: Tensor, other: Tensor) | not_equal_.Scalar(self: Tensor, other: number) */
+  not_equal_(self: Tensor, other: Tensor): Tensor;
+  not_equal_(self: Tensor, other: unknown): Tensor;
   not_equal_(...args: unknown[]): Tensor;
-  /** nuclear_norm(self: Tensor, keepdim: bool) | nuclear_norm.dim(self: Tensor, dim: List[int], keepdim: bool) */
+  nuclear_norm(self: Tensor, keepdim?: boolean): Tensor;
+  nuclear_norm(self: Tensor, dim: unknown, keepdim?: boolean): Tensor;
   nuclear_norm(...args: unknown[]): Tensor;
-  /** numel(self: Tensor) */
   numel(self: Tensor): number;
-  /** numpy_T(self: Tensor) */
   numpy_T(self: Tensor): Tensor;
-  /** one_hot(self: Tensor, num_classes: int) */
   one_hot(self: Tensor, num_classes?: number | bigint): Tensor;
-  /** ones(size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   ones(size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** ones_like(self: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) */
   ones_like(self: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
-  /** orgqr(self: Tensor, input2: Tensor) */
   orgqr(self: Tensor, input2: Tensor): Tensor;
-  /** ormqr(self: Tensor, input2: Tensor, input3: Tensor, left: bool, transpose: bool) */
   ormqr(self: Tensor, input2: Tensor, input3: Tensor, left?: boolean, transpose?: boolean): Tensor;
-  /** outer(self: Tensor, vec2: Tensor) */
   outer(self: Tensor, vec2: Tensor): Tensor;
-  /** output_nr(self: Tensor) */
   output_nr(self: Tensor): number;
-  /** pad(self: Tensor, pad: List[int], mode: str, value: Optional[float]) */
   pad(self: Tensor, pad: unknown, mode?: string, value?: unknown): Tensor;
-  /** pad_sequence(sequences: List[Tensor], batch_first: bool, padding_value: float, padding_side: str) */
   pad_sequence(sequences: unknown, batch_first?: boolean, padding_value?: number, padding_side?: string): Tensor;
-  /** pairwise_distance(x1: Tensor, x2: Tensor, p: float, eps: float, keepdim: bool) */
   pairwise_distance(x1: Tensor, x2: Tensor, p?: number, eps?: number, keepdim?: boolean): Tensor;
-  /** pdist(self: Tensor, p: float) */
   pdist(self: Tensor, p?: number): Tensor;
-  /** permute(self: Tensor, dims: List[int]) */
   permute(self: Tensor, dims: unknown): Tensor;
-  /** permute_copy(self: Tensor, dims: List[int]) */
   permute_copy(self: Tensor, dims: unknown): Tensor;
-  /** pin_memory(self: Tensor, device: Optional[Device]) */
   pin_memory(self: Tensor, device?: unknown): Tensor;
-  /** pinverse(self: Tensor, rcond: float) */
   pinverse(self: Tensor, rcond?: number): Tensor;
-  /** pixel_shuffle(self: Tensor, upscale_factor: int) */
   pixel_shuffle(self: Tensor, upscale_factor: number | bigint): Tensor;
-  /** pixel_unshuffle(self: Tensor, downscale_factor: int) */
   pixel_unshuffle(self: Tensor, downscale_factor: number | bigint): Tensor;
-  /** poisson(self: Tensor, generator: Optional[Generator]) */
   poisson(self: Tensor, generator?: unknown): Tensor;
-  /** poisson_nll_loss(input: Tensor, target: Tensor, log_input: bool, full: bool, eps: float, reduction: int) */
   poisson_nll_loss(input: Tensor, target: Tensor, log_input: boolean, full: boolean, eps: number, reduction: number | bigint): Tensor;
-  /** polar(abs: Tensor, angle: Tensor) */
   polar(abs: Tensor, angle: Tensor): Tensor;
-  /** polygamma(n: int, self: Tensor) */
   polygamma(n: number | bigint, self: Tensor): Tensor;
-  /** polygamma_(self: Tensor, n: int) */
   polygamma_(self: Tensor, n: number | bigint): Tensor;
-  /** positive(self: Tensor) */
   positive(self: Tensor): Tensor;
-  /** pow.Tensor_Scalar(self: Tensor, exponent: number) | pow.Scalar(self: number, exponent: Tensor) | pow.Tensor_Tensor(self: Tensor, exponent: Tensor) */
+  pow(self: Tensor, exponent: unknown): Tensor;
+  pow(self: unknown, exponent: Tensor): Tensor;
+  pow(self: Tensor, exponent: Tensor): Tensor;
   pow(...args: unknown[]): Tensor;
-  /** pow_.Tensor(self: Tensor, exponent: Tensor) | pow_.Scalar(self: Tensor, exponent: number) */
+  pow_(self: Tensor, exponent: Tensor): Tensor;
+  pow_(self: Tensor, exponent: unknown): Tensor;
   pow_(...args: unknown[]): Tensor;
-  /** prelu(self: Tensor, weight: Tensor) */
   prelu(self: Tensor, weight: Tensor): Tensor;
-  /** prod.dim_int(self: Tensor, dim: int, keepdim: bool, dtype: Optional[int]) | prod(self: Tensor, dtype: Optional[int]) */
+  prod(self: Tensor, dim: number | bigint, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
+  prod(self: Tensor, options?: { dtype?: unknown }): Tensor;
   prod(...args: unknown[]): Tensor;
-  /** promote_types(type1: int, type2: int) */
   promote_types(type1: DType | number, type2: DType | number): number;
-  /** put(self: Tensor, index: Tensor, source: Tensor, accumulate: bool) */
   put(self: Tensor, index: Tensor, source: Tensor, accumulate?: boolean): Tensor;
-  /** put_(self: Tensor, index: Tensor, source: Tensor, accumulate: bool) */
   put_(self: Tensor, index: Tensor, source: Tensor, accumulate?: boolean): Tensor;
-  /** q_per_channel_axis(self: Tensor) */
   q_per_channel_axis(self: Tensor): number;
-  /** q_per_channel_scales(self: Tensor) */
   q_per_channel_scales(self: Tensor): Tensor;
-  /** q_per_channel_zero_points(self: Tensor) */
   q_per_channel_zero_points(self: Tensor): Tensor;
-  /** q_scale(self: Tensor) */
   q_scale(self: Tensor): number;
-  /** q_zero_point(self: Tensor) */
   q_zero_point(self: Tensor): number;
-  /** qscheme(self: Tensor) */
   qscheme(self: Tensor): unknown;
-  /** quantile.scalar(self: Tensor, q: float, dim: Optional[int], keepdim: bool, interpolation: str) | quantile(self: Tensor, q: Tensor, dim: Optional[int], keepdim: bool, interpolation: str) */
+  quantile(self: Tensor, q: number, dim?: unknown, keepdim?: boolean, options?: { interpolation?: string }): Tensor;
+  quantile(self: Tensor, q: Tensor, dim?: unknown, keepdim?: boolean, options?: { interpolation?: string }): Tensor;
   quantile(...args: unknown[]): Tensor;
-  /** quantize_per_channel(self: Tensor, scales: Tensor, zero_points: Tensor, axis: int, dtype: int) */
   quantize_per_channel(self: Tensor, scales: Tensor, zero_points: Tensor, axis: number | bigint, dtype: DType | number): Tensor;
-  /** quantize_per_tensor(self: Tensor, scale: float, zero_point: int, dtype: int) | quantize_per_tensor.tensors(tensors: List[Tensor], scales: Tensor, zero_points: Tensor, dtype: int) | quantize_per_tensor.tensor_qparams(self: Tensor, scale: Tensor, zero_point: Tensor, dtype: int) */
+  quantize_per_tensor(self: Tensor, scale: number, zero_point: number | bigint, dtype: DType | number): Tensor;
+  quantize_per_tensor(tensors: unknown, scales: Tensor, zero_points: Tensor, dtype: DType | number): unknown;
+  quantize_per_tensor(self: Tensor, scale: Tensor, zero_point: Tensor, dtype: DType | number): Tensor;
   quantize_per_tensor(...args: unknown[]): Tensor;
-  /** quantize_per_tensor_dynamic(self: Tensor, dtype: int, reduce_range: bool) */
   quantize_per_tensor_dynamic(self: Tensor, dtype: DType | number, reduce_range: boolean): Tensor;
-  /** quantized_batch_norm(input: Tensor, weight: Optional[Tensor], bias: Optional[Tensor], mean: Tensor, var: Tensor, eps: float, output_scale: float, output_zero_point: int) */
   quantized_batch_norm(input: Tensor, weight: unknown, bias: unknown, mean: Tensor, var_: Tensor, eps: number, output_scale: number, output_zero_point: number | bigint): Tensor;
-  /** quantized_gru.input_legacy(input: Tensor, hx: Tensor, params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, batch_first: bool) | quantized_gru.data_legacy(data: Tensor, batch_sizes: Tensor, hx: Tensor, params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool) | quantized_gru.data(data: Tensor, batch_sizes: Tensor, hx: Tensor, params: List[__torch__.torch.classes.rnn.CellParamsBase], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool) | quantized_gru.input(input: Tensor, hx: Tensor, params: List[__torch__.torch.classes.rnn.CellParamsBase], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, batch_first: bool) */
+  quantized_gru(input: Tensor, hx: Tensor, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean, batch_first: boolean): [Tensor, Tensor];
+  quantized_gru(data: Tensor, batch_sizes: Tensor, hx: Tensor, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean): [Tensor, Tensor];
   quantized_gru(...args: unknown[]): [Tensor, Tensor];
-  /** quantized_gru_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih: Tensor, b_hh: Tensor, packed_ih: Tensor, packed_hh: Tensor, col_offsets_ih: Tensor, col_offsets_hh: Tensor, scale_ih: number, scale_hh: number, zero_point_ih: number, zero_point_hh: number) */
   quantized_gru_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih: Tensor, b_hh: Tensor, packed_ih: Tensor, packed_hh: Tensor, col_offsets_ih: Tensor, col_offsets_hh: Tensor, scale_ih: unknown, scale_hh: unknown, zero_point_ih: unknown, zero_point_hh: unknown): Tensor;
-  /** quantized_lstm.input_legacy(input: Tensor, hx: List[Tensor], params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, batch_first: bool, dtype: Optional[int], use_dynamic: bool) | quantized_lstm.data_legacy(data: Tensor, batch_sizes: Tensor, hx: List[Tensor], params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, dtype: Optional[int], use_dynamic: bool) | quantized_lstm.input(input: Tensor, hx: List[Tensor], params: List[__torch__.torch.classes.rnn.CellParamsBase], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, batch_first: bool, dtype: Optional[int], use_dynamic: bool) | quantized_lstm.data(data: Tensor, batch_sizes: Tensor, hx: List[Tensor], params: List[__torch__.torch.classes.rnn.CellParamsBase], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, dtype: Optional[int], use_dynamic: bool) */
+  quantized_lstm(input: Tensor, hx: unknown, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean, batch_first: boolean, options?: { dtype?: unknown; use_dynamic?: boolean }): [Tensor, Tensor, Tensor];
+  quantized_lstm(data: Tensor, batch_sizes: Tensor, hx: unknown, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean, options?: { dtype?: unknown; use_dynamic?: boolean }): [Tensor, Tensor, Tensor];
   quantized_lstm(...args: unknown[]): [Tensor, Tensor, Tensor];
-  /** quantized_lstm_cell(input: Tensor, hx: List[Tensor], w_ih: Tensor, w_hh: Tensor, b_ih: Tensor, b_hh: Tensor, packed_ih: Tensor, packed_hh: Tensor, col_offsets_ih: Tensor, col_offsets_hh: Tensor, scale_ih: number, scale_hh: number, zero_point_ih: number, zero_point_hh: number) */
   quantized_lstm_cell(input: Tensor, hx: unknown, w_ih: Tensor, w_hh: Tensor, b_ih: Tensor, b_hh: Tensor, packed_ih: Tensor, packed_hh: Tensor, col_offsets_ih: Tensor, col_offsets_hh: Tensor, scale_ih: unknown, scale_hh: unknown, zero_point_ih: unknown, zero_point_hh: unknown): [Tensor, Tensor];
-  /** quantized_max_pool1d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   quantized_max_pool1d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): Tensor;
-  /** quantized_max_pool2d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   quantized_max_pool2d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): Tensor;
-  /** quantized_max_pool3d(self: Tensor, kernel_size: List[int], stride: List[int], padding: List[int], dilation: List[int], ceil_mode: bool) */
   quantized_max_pool3d(self: Tensor, kernel_size: unknown, stride?: unknown, padding?: unknown, dilation?: unknown, ceil_mode?: boolean): Tensor;
-  /** quantized_rnn_relu_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih: Tensor, b_hh: Tensor, packed_ih: Tensor, packed_hh: Tensor, col_offsets_ih: Tensor, col_offsets_hh: Tensor, scale_ih: number, scale_hh: number, zero_point_ih: number, zero_point_hh: number) */
   quantized_rnn_relu_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih: Tensor, b_hh: Tensor, packed_ih: Tensor, packed_hh: Tensor, col_offsets_ih: Tensor, col_offsets_hh: Tensor, scale_ih: unknown, scale_hh: unknown, zero_point_ih: unknown, zero_point_hh: unknown): Tensor;
-  /** quantized_rnn_tanh_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih: Tensor, b_hh: Tensor, packed_ih: Tensor, packed_hh: Tensor, col_offsets_ih: Tensor, col_offsets_hh: Tensor, scale_ih: number, scale_hh: number, zero_point_ih: number, zero_point_hh: number) */
   quantized_rnn_tanh_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih: Tensor, b_hh: Tensor, packed_ih: Tensor, packed_hh: Tensor, col_offsets_ih: Tensor, col_offsets_hh: Tensor, scale_ih: unknown, scale_hh: unknown, zero_point_ih: unknown, zero_point_hh: unknown): Tensor;
-  /** rad2deg(self: Tensor) */
   rad2deg(self: Tensor): Tensor;
-  /** rad2deg_(self: Tensor) */
   rad2deg_(self: Tensor): Tensor;
-  /** rand(size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | rand.generator(size: List[int], generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  rand(size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  rand(size: unknown, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   rand(...args: unknown[]): Tensor;
-  /** rand_like(self: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) | rand_like.generator(self: Tensor, generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) */
+  rand_like(self: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
+  rand_like(self: Tensor, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
   rand_like(...args: unknown[]): Tensor;
-  /** randint(high: int, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | randint.low(low: int, high: int, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | randint.low_generator(low: int, high: int, size: List[int], generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | randint.generator(high: int, size: List[int], generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  randint(high: number | bigint, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  randint(low: number | bigint, high: number | bigint, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  randint(low: number | bigint, high: number | bigint, size: unknown, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  randint(high: number | bigint, size: unknown, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   randint(...args: unknown[]): Tensor;
-  /** randint_like(self: Tensor, high: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) | randint_like.generator(self: Tensor, high: int, generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) | randint_like.low_generator_dtype(self: Tensor, low: int, high: int, generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) | randint_like.Tensor(self: Tensor, high: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) */
+  randint_like(self: Tensor, high: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
+  randint_like(self: Tensor, high: number | bigint, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
+  randint_like(self: Tensor, low: number | bigint, high: number | bigint, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
+  randint_like(self: Tensor, high: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
+  randint_like(self: Tensor, low: number | bigint, high: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
+  randint_like(self: Tensor, high: Tensor, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
   randint_like(...args: unknown[]): Tensor;
-  /** randn.generator(size: List[int], generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | randn(size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  randn(size: unknown, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  randn(size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   randn(...args: unknown[]): Tensor;
-  /** randn_like.generator(self: Tensor, generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) | randn_like(self: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) */
+  randn_like(self: Tensor, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
+  randn_like(self: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
   randn_like(...args: unknown[]): Tensor;
-  /** random.from(self: Tensor, from: int, to: Optional[int], generator: Optional[Generator]) | random(self: Tensor, generator: Optional[Generator]) | random.to(self: Tensor, to: int, generator: Optional[Generator]) */
+  random(self: Tensor, from: number | bigint, to: unknown, options?: { generator?: unknown }): Tensor;
+  random(self: Tensor, options?: { generator?: unknown }): Tensor;
+  random(self: Tensor, to: number | bigint, options?: { generator?: unknown }): Tensor;
   random(...args: unknown[]): Tensor;
-  /** random_.to(self: Tensor, to: int, generator: Optional[Generator]) | random_(self: Tensor, generator: Optional[Generator]) | random_.from(self: Tensor, from: int, to: Optional[int], generator: Optional[Generator]) */
+  random_(self: Tensor, to: number | bigint, options?: { generator?: unknown }): Tensor;
+  random_(self: Tensor, options?: { generator?: unknown }): Tensor;
+  random_(self: Tensor, from: number | bigint, to: unknown, options?: { generator?: unknown }): Tensor;
   random_(...args: unknown[]): Tensor;
-  /** randperm(n: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | randperm.generator(n: int, generator: Optional[Generator], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  randperm(n: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  randperm(n: number | bigint, options?: { generator?: unknown; dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   randperm(...args: unknown[]): Tensor;
-  /** range(start: number, end: number, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | range.step(start: number, end: number, step: number, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  range(start: unknown, end: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  range(start: unknown, end: unknown, step?: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   range(...args: unknown[]): Tensor;
-  /** ravel(self: Tensor) */
   ravel(self: Tensor): Tensor;
-  /** real(self: Tensor) */
   real(self: Tensor): Tensor;
-  /** reciprocal(self: Tensor) */
   reciprocal(self: Tensor): Tensor;
-  /** reciprocal_(self: Tensor) */
   reciprocal_(self: Tensor): Tensor;
-  /** record_stream(self: Tensor, s: Stream) */
   record_stream(self: Tensor, s: unknown): void;
-  /** reflection_pad1d(self: Tensor, padding: List[int]) */
   reflection_pad1d(self: Tensor, padding: unknown): Tensor;
-  /** reflection_pad2d(self: Tensor, padding: List[int]) */
   reflection_pad2d(self: Tensor, padding: unknown): Tensor;
-  /** reflection_pad3d(self: Tensor, padding: List[int]) */
   reflection_pad3d(self: Tensor, padding: unknown): Tensor;
-  /** relu(self: Tensor) */
   relu(self: Tensor): Tensor;
-  /** relu6(self: Tensor) */
   relu6(self: Tensor): Tensor;
-  /** relu6_(self: Tensor) */
   relu6_(self: Tensor): Tensor;
-  /** relu_(self: Tensor) */
   relu_(self: Tensor): Tensor;
-  /** remainder.Scalar_Tensor(self: number, other: Tensor) | remainder.Scalar(self: Tensor, other: number) | remainder.Tensor(self: Tensor, other: Tensor) */
+  remainder(self: unknown, other: Tensor): Tensor;
+  remainder(self: Tensor, other: unknown): Tensor;
+  remainder(self: Tensor, other: Tensor): Tensor;
   remainder(...args: unknown[]): Tensor;
-  /** remainder_.Scalar(self: Tensor, other: number) | remainder_.Tensor(self: Tensor, other: Tensor) */
+  remainder_(self: Tensor, other: unknown): Tensor;
+  remainder_(self: Tensor, other: Tensor): Tensor;
   remainder_(...args: unknown[]): Tensor;
-  /** renorm(self: Tensor, p: number, dim: int, maxnorm: number) */
   renorm(self: Tensor, p: unknown, dim: number | bigint, maxnorm: unknown): Tensor;
-  /** renorm_(self: Tensor, p: number, dim: int, maxnorm: number) */
   renorm_(self: Tensor, p: unknown, dim: number | bigint, maxnorm: unknown): Tensor;
-  /** repeat(self: Tensor, repeats: List[int]) */
   repeat(self: Tensor, repeats: unknown): Tensor;
-  /** repeat_interleave.Tensor(repeats: Tensor, output_size: Optional[int]) | repeat_interleave.self_Tensor(self: Tensor, repeats: Tensor, dim: Optional[int], output_size: Optional[int]) | repeat_interleave.self_int(self: Tensor, repeats: int, dim: Optional[int], output_size: Optional[int]) */
+  repeat_interleave(repeats: Tensor, options?: { output_size?: unknown }): Tensor;
+  repeat_interleave(self: Tensor, repeats: Tensor, dim?: unknown, options?: { output_size?: unknown }): Tensor;
+  repeat_interleave(self: Tensor, repeats: number | bigint, dim?: unknown, options?: { output_size?: unknown }): Tensor;
   repeat_interleave(...args: unknown[]): Tensor;
-  /** replication_pad1d(self: Tensor, padding: List[int]) */
   replication_pad1d(self: Tensor, padding: unknown): Tensor;
-  /** replication_pad2d(self: Tensor, padding: List[int]) */
   replication_pad2d(self: Tensor, padding: unknown): Tensor;
-  /** replication_pad3d(self: Tensor, padding: List[int]) */
   replication_pad3d(self: Tensor, padding: unknown): Tensor;
-  /** requires_grad_(self: Tensor, requires_grad: bool) */
   requires_grad_(self: Tensor, requires_grad?: boolean): Tensor;
-  /** reshape(self: Tensor, shape: List[int]) */
   reshape(self: Tensor, shape: unknown): Tensor;
-  /** reshape_as(self: Tensor, other: Tensor) */
   reshape_as(self: Tensor, other: Tensor): Tensor;
-  /** resize(self: Tensor, size: List[int], memory_format: Optional[int]) */
   resize(self: Tensor, size: unknown, options?: { memory_format?: unknown }): Tensor;
-  /** resize_(self: Tensor, size: List[int], memory_format: Optional[int]) */
   resize_(self: Tensor, size: unknown, options?: { memory_format?: unknown }): Tensor;
-  /** resize_as(self: Tensor, the_template: Tensor, memory_format: Optional[int]) */
   resize_as(self: Tensor, the_template: Tensor, options?: { memory_format?: unknown }): Tensor;
-  /** resize_as_(self: Tensor, the_template: Tensor, memory_format: Optional[int]) */
   resize_as_(self: Tensor, the_template: Tensor, options?: { memory_format?: unknown }): Tensor;
-  /** resize_as_sparse(self: Tensor, the_template: Tensor) */
   resize_as_sparse(self: Tensor, the_template: Tensor): Tensor;
-  /** resize_as_sparse_(self: Tensor, the_template: Tensor) */
   resize_as_sparse_(self: Tensor, the_template: Tensor): Tensor;
-  /** resolve_conj(self: Tensor) */
   resolve_conj(self: Tensor): Tensor;
-  /** resolve_neg(self: Tensor) */
   resolve_neg(self: Tensor): Tensor;
-  /** result_type.Scalar(tensor: Tensor, other: number) | result_type.Scalar_Tensor(scalar: number, tensor: Tensor) | result_type.Tensor(tensor: Tensor, other: Tensor) | result_type.Scalar_Scalar(scalar1: number, scalar2: number) */
+  result_type(tensor: Tensor, other: unknown): number;
+  result_type(scalar: unknown, tensor: Tensor): number;
+  result_type(tensor: Tensor, other: Tensor): number;
+  result_type(scalar1: unknown, scalar2: unknown): number;
   result_type(...args: unknown[]): number;
-  /** retain_grad(self: Tensor) */
   retain_grad(self: Tensor): void;
-  /** retains_grad(self: Tensor) */
   retains_grad(self: Tensor): boolean;
-  /** rms_norm(input: Tensor, normalized_shape: List[int], weight: Optional[Tensor], eps: Optional[float]) */
   rms_norm(input: Tensor, normalized_shape: unknown, weight?: unknown, eps?: unknown): Tensor;
-  /** rnn_relu.data(data: Tensor, batch_sizes: Tensor, hx: Tensor, params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool) | rnn_relu.input(input: Tensor, hx: Tensor, params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, batch_first: bool) */
+  rnn_relu(data: Tensor, batch_sizes: Tensor, hx: Tensor, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean): [Tensor, Tensor];
+  rnn_relu(input: Tensor, hx: Tensor, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean, batch_first: boolean): [Tensor, Tensor];
   rnn_relu(...args: unknown[]): [Tensor, Tensor];
-  /** rnn_relu_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih: Optional[Tensor], b_hh: Optional[Tensor]) */
   rnn_relu_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih?: unknown, b_hh?: unknown): Tensor;
-  /** rnn_tanh.data(data: Tensor, batch_sizes: Tensor, hx: Tensor, params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool) | rnn_tanh.input(input: Tensor, hx: Tensor, params: List[Tensor], has_biases: bool, num_layers: int, dropout: float, train: bool, bidirectional: bool, batch_first: bool) */
+  rnn_tanh(data: Tensor, batch_sizes: Tensor, hx: Tensor, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean): [Tensor, Tensor];
+  rnn_tanh(input: Tensor, hx: Tensor, params: unknown, has_biases: boolean, num_layers: number | bigint, dropout: number, train: boolean, bidirectional: boolean, batch_first: boolean): [Tensor, Tensor];
   rnn_tanh(...args: unknown[]): [Tensor, Tensor];
-  /** rnn_tanh_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih: Optional[Tensor], b_hh: Optional[Tensor]) */
   rnn_tanh_cell(input: Tensor, hx: Tensor, w_ih: Tensor, w_hh: Tensor, b_ih?: unknown, b_hh?: unknown): Tensor;
-  /** roll(self: Tensor, shifts: List[int], dims: List[int]) */
   roll(self: Tensor, shifts: unknown, dims?: unknown): Tensor;
-  /** rot90(self: Tensor, k: int, dims: List[int]) */
   rot90(self: Tensor, k?: number | bigint, dims?: unknown): Tensor;
-  /** round(self: Tensor) | round.decimals(self: Tensor, decimals: int) */
+  round(self: Tensor): Tensor;
+  round(self: Tensor, options?: { decimals?: number | bigint }): Tensor;
   round(...args: unknown[]): Tensor;
-  /** round_.decimals(self: Tensor, decimals: int) | round_(self: Tensor) */
+  round_(self: Tensor, options?: { decimals?: number | bigint }): Tensor;
+  round_(self: Tensor): Tensor;
   round_(...args: unknown[]): Tensor;
-  /** row_indices(self: Tensor) */
   row_indices(self: Tensor): Tensor;
-  /** row_indices_copy(self: Tensor) */
   row_indices_copy(self: Tensor): Tensor;
-  /** row_stack(tensors: List[Tensor]) */
   row_stack(tensors: unknown): Tensor;
-  /** rrelu(self: Tensor, lower: number, upper: number, training: bool, generator: Optional[Generator]) */
   rrelu(self: Tensor, lower?: unknown, upper?: unknown, training?: boolean, generator?: unknown): Tensor;
-  /** rrelu_(self: Tensor, lower: number, upper: number, training: bool, generator: Optional[Generator]) */
   rrelu_(self: Tensor, lower?: unknown, upper?: unknown, training?: boolean, generator?: unknown): Tensor;
-  /** rrelu_with_noise(self: Tensor, noise: Tensor, lower: number, upper: number, training: bool, generator: Optional[Generator]) */
   rrelu_with_noise(self: Tensor, noise: Tensor, lower?: unknown, upper?: unknown, training?: boolean, generator?: unknown): Tensor;
-  /** rrelu_with_noise_(self: Tensor, noise: Tensor, lower: number, upper: number, training: bool, generator: Optional[Generator]) */
   rrelu_with_noise_(self: Tensor, noise: Tensor, lower?: unknown, upper?: unknown, training?: boolean, generator?: unknown): Tensor;
-  /** rrelu_with_noise_functional(self: Tensor, noise: Tensor, lower: number, upper: number, training: bool, generator: Optional[Generator]) */
   rrelu_with_noise_functional(self: Tensor, noise: Tensor, lower?: unknown, upper?: unknown, training?: boolean, generator?: unknown): [Tensor, Tensor];
-  /** rsqrt(self: Tensor) */
   rsqrt(self: Tensor): Tensor;
-  /** rsqrt_(self: Tensor) */
   rsqrt_(self: Tensor): Tensor;
-  /** rsub.Scalar(self: Tensor, other: number, alpha: number) | rsub.Tensor(self: Tensor, other: Tensor, alpha: number) */
+  rsub(self: Tensor, other: unknown, alpha?: unknown): Tensor;
+  rsub(self: Tensor, other: Tensor, options?: { alpha?: unknown }): Tensor;
   rsub(...args: unknown[]): Tensor;
-  /** scalar_tensor(s: number, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   scalar_tensor(s: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** scaled_dot_product_attention(query: Tensor, key: Tensor, value: Tensor, attn_mask: Optional[Tensor], dropout_p: float, is_causal: bool, scale: Optional[float], enable_gqa: bool) */
   scaled_dot_product_attention(query: Tensor, key: Tensor, value: Tensor, attn_mask?: unknown, dropout_p?: number, is_causal?: boolean, options?: { scale?: unknown; enable_gqa?: boolean }): Tensor;
-  /** scatter.value(self: Tensor, dim: int, index: Tensor, value: number) | scatter.value_reduce(self: Tensor, dim: int, index: Tensor, value: number, reduce: str) | scatter.reduce(self: Tensor, dim: int, index: Tensor, src: Tensor, reduce: str) | scatter.src(self: Tensor, dim: int, index: Tensor, src: Tensor) */
+  scatter(self: Tensor, dim: number | bigint, index: Tensor, value: unknown): Tensor;
+  scatter(self: Tensor, dim: number | bigint, index: Tensor, value: unknown, options?: { reduce?: string }): Tensor;
+  scatter(self: Tensor, dim: number | bigint, index: Tensor, src: Tensor, options?: { reduce?: string }): Tensor;
+  scatter(self: Tensor, dim: number | bigint, index: Tensor, src: Tensor): Tensor;
   scatter(...args: unknown[]): Tensor;
-  /** scatter_.value_reduce(self: Tensor, dim: int, index: Tensor, value: number, reduce: str) | scatter_.value(self: Tensor, dim: int, index: Tensor, value: number) | scatter_.src(self: Tensor, dim: int, index: Tensor, src: Tensor) | scatter_.reduce(self: Tensor, dim: int, index: Tensor, src: Tensor, reduce: str) */
+  scatter_(self: Tensor, dim: number | bigint, index: Tensor, value: unknown, options?: { reduce?: string }): Tensor;
+  scatter_(self: Tensor, dim: number | bigint, index: Tensor, value: unknown): Tensor;
+  scatter_(self: Tensor, dim: number | bigint, index: Tensor, src: Tensor): Tensor;
+  scatter_(self: Tensor, dim: number | bigint, index: Tensor, src: Tensor, options?: { reduce?: string }): Tensor;
   scatter_(...args: unknown[]): Tensor;
-  /** scatter_add(self: Tensor, dim: int, index: Tensor, src: Tensor) */
   scatter_add(self: Tensor, dim: number | bigint, index: Tensor, src: Tensor): Tensor;
-  /** scatter_add_(self: Tensor, dim: int, index: Tensor, src: Tensor) */
   scatter_add_(self: Tensor, dim: number | bigint, index: Tensor, src: Tensor): Tensor;
-  /** scatter_reduce.two(self: Tensor, dim: int, index: Tensor, src: Tensor, reduce: str, include_self: bool) */
   scatter_reduce(self: Tensor, dim: number | bigint, index: Tensor, src: Tensor, reduce: string, options?: { include_self?: boolean }): Tensor;
-  /** scatter_reduce_.two(self: Tensor, dim: int, index: Tensor, src: Tensor, reduce: str, include_self: bool) */
   scatter_reduce_(self: Tensor, dim: number | bigint, index: Tensor, src: Tensor, reduce: string, options?: { include_self?: boolean }): Tensor;
-  /** searchsorted.Tensor(sorted_sequence: Tensor, self: Tensor, out_int32: bool, right: bool, side: Optional[str], sorter: Optional[Tensor]) | searchsorted.Scalar(sorted_sequence: Tensor, self: number, out_int32: bool, right: bool, side: Optional[str], sorter: Optional[Tensor]) */
+  searchsorted(sorted_sequence: Tensor, self: Tensor, options?: { out_int32?: boolean; right?: boolean; side?: unknown; sorter?: unknown }): Tensor;
+  searchsorted(sorted_sequence: Tensor, self: unknown, options?: { out_int32?: boolean; right?: boolean; side?: unknown; sorter?: unknown }): Tensor;
   searchsorted(...args: unknown[]): Tensor;
-  /** segment_reduce(data: Tensor, reduce: str, lengths: Optional[Tensor], indices: Optional[Tensor], offsets: Optional[Tensor], axis: int, unsafe: bool, initial: Optional[number]) */
   segment_reduce(data: Tensor, reduce: string, options?: { lengths?: unknown; indices?: unknown; offsets?: unknown; axis?: number | bigint; unsafe?: boolean; initial?: unknown }): Tensor;
-  /** select.int(self: Tensor, dim: int, index: int) */
   select(self: Tensor, dim: number | bigint, index: number | bigint): Tensor;
-  /** select_copy.int(self: Tensor, dim: int, index: int) */
   select_copy(self: Tensor, dim: number | bigint, index: number | bigint): Tensor;
-  /** select_scatter(self: Tensor, src: Tensor, dim: int, index: int) */
   select_scatter(self: Tensor, src: Tensor, dim: number | bigint, index: number | bigint): Tensor;
-  /** selu(self: Tensor) */
   selu(self: Tensor): Tensor;
-  /** selu_(self: Tensor) */
   selu_(self: Tensor): Tensor;
-  /** set.source_Tensor(self: Tensor, source: Tensor) | set(self: Tensor) | set.source_Storage(self: Tensor, source: Storage) | set.source_Storage_storage_offset(self: Tensor, source: Storage, storage_offset: int, size: List[int], stride: List[int]) */
+  set(self: Tensor, source: Tensor): Tensor;
+  set(self: Tensor): Tensor;
+  set(self: Tensor, source: unknown): Tensor;
+  set(self: Tensor, source: unknown, storage_offset: number | bigint, size: unknown, stride?: unknown): Tensor;
   set(...args: unknown[]): Tensor;
-  /** set_.source_Tensor_storage_offset(self: Tensor, source: Tensor, storage_offset: int, size: List[int], stride: List[int]) | set_(self: Tensor) | set_.source_Storage_storage_offset(self: Tensor, source: Storage, storage_offset: int, size: List[int], stride: List[int]) | set_.source_Tensor(self: Tensor, source: Tensor) */
+  set_(self: Tensor, source: Tensor, storage_offset: number | bigint, size: unknown, stride?: unknown): Tensor;
+  set_(self: Tensor): Tensor;
+  set_(self: Tensor, source: unknown, storage_offset: number | bigint, size: unknown, stride?: unknown): Tensor;
+  set_(self: Tensor, source: Tensor): Tensor;
+  set_(self: Tensor, source: unknown): Tensor;
   set_(...args: unknown[]): Tensor;
-  /** set_data(self: Tensor, new_data: Tensor) */
   set_data(self: Tensor, new_data: Tensor): void;
-  /** sgn(self: Tensor) */
   sgn(self: Tensor): Tensor;
-  /** sgn_(self: Tensor) */
   sgn_(self: Tensor): Tensor;
-  /** shallow_copy_data_(self: Tensor, source: Tensor) */
   shallow_copy_data_(self: Tensor, source: Tensor): Tensor;
-  /** sigmoid(self: Tensor) */
   sigmoid(self: Tensor): Tensor;
-  /** sigmoid_(self: Tensor) */
   sigmoid_(self: Tensor): Tensor;
-  /** sign(self: Tensor) */
   sign(self: Tensor): Tensor;
-  /** sign_(self: Tensor) */
   sign_(self: Tensor): Tensor;
-  /** signbit(self: Tensor) */
   signbit(self: Tensor): Tensor;
-  /** silu(self: Tensor) */
   silu(self: Tensor): Tensor;
-  /** silu_(self: Tensor) */
   silu_(self: Tensor): Tensor;
-  /** sin(self: Tensor) */
   sin(self: Tensor): Tensor;
-  /** sin_(self: Tensor) */
   sin_(self: Tensor): Tensor;
-  /** sinc(self: Tensor) */
   sinc(self: Tensor): Tensor;
-  /** sinc_(self: Tensor) */
   sinc_(self: Tensor): Tensor;
-  /** sinh(self: Tensor) */
   sinh(self: Tensor): Tensor;
-  /** sinh_(self: Tensor) */
   sinh_(self: Tensor): Tensor;
-  /** size.int(self: Tensor, dim: int) */
   size(self: Tensor, dim: number | bigint): number;
-  /** slice.Tensor(self: Tensor, dim: int, start: Optional[int], end: Optional[int], step: int) */
   slice(self: Tensor, dim?: number | bigint, start?: unknown, end?: unknown, step?: number | bigint): Tensor;
-  /** slice_copy.Tensor(self: Tensor, dim: int, start: Optional[int], end: Optional[int], step: int) */
   slice_copy(self: Tensor, dim?: number | bigint, start?: unknown, end?: unknown, step?: number | bigint): Tensor;
-  /** slice_inverse(self: Tensor, src: Tensor, dim: int, start: Optional[int], end: Optional[int], step: int) */
   slice_inverse(self: Tensor, src: Tensor, dim?: number | bigint, start?: unknown, end?: unknown, step?: number | bigint): Tensor;
-  /** slice_scatter(self: Tensor, src: Tensor, dim: int, start: Optional[int], end: Optional[int], step: int) */
   slice_scatter(self: Tensor, src: Tensor, dim?: number | bigint, start?: unknown, end?: unknown, step?: number | bigint): Tensor;
-  /** slogdet(self: Tensor) */
   slogdet(self: Tensor): [Tensor, Tensor];
-  /** slow_conv3d(self: Tensor, weight: Tensor, kernel_size: List[int], bias: Optional[Tensor], stride: List[int], padding: List[int]) */
   slow_conv3d(self: Tensor, weight: Tensor, kernel_size: unknown, bias?: unknown, stride?: unknown, padding?: unknown): Tensor;
-  /** slow_conv3d_forward(self: Tensor, weight: Tensor, kernel_size: List[int], bias: Optional[Tensor], stride: List[int], padding: List[int]) */
   slow_conv3d_forward(self: Tensor, weight: Tensor, kernel_size: unknown, bias: unknown, stride: unknown, padding: unknown): Tensor;
-  /** slow_conv_dilated2d(self: Tensor, weight: Tensor, kernel_size: List[int], bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int]) */
   slow_conv_dilated2d(self: Tensor, weight: Tensor, kernel_size: unknown, bias?: unknown, stride?: unknown, padding?: unknown, dilation?: unknown): Tensor;
-  /** slow_conv_dilated3d(self: Tensor, weight: Tensor, kernel_size: List[int], bias: Optional[Tensor], stride: List[int], padding: List[int], dilation: List[int]) */
   slow_conv_dilated3d(self: Tensor, weight: Tensor, kernel_size: unknown, bias?: unknown, stride?: unknown, padding?: unknown, dilation?: unknown): Tensor;
-  /** slow_conv_transpose2d(self: Tensor, weight: Tensor, kernel_size: List[int], bias: Optional[Tensor], stride: List[int], padding: List[int], output_padding: List[int], dilation: List[int]) */
   slow_conv_transpose2d(self: Tensor, weight: Tensor, kernel_size: unknown, bias?: unknown, stride?: unknown, padding?: unknown, output_padding?: unknown, dilation?: unknown): Tensor;
-  /** slow_conv_transpose3d(self: Tensor, weight: Tensor, kernel_size: List[int], bias: Optional[Tensor], stride: List[int], padding: List[int], output_padding: List[int], dilation: List[int]) */
   slow_conv_transpose3d(self: Tensor, weight: Tensor, kernel_size: unknown, bias?: unknown, stride?: unknown, padding?: unknown, output_padding?: unknown, dilation?: unknown): Tensor;
-  /** smm(self: Tensor, mat2: Tensor) */
   smm(self: Tensor, mat2: Tensor): Tensor;
-  /** smooth_l1_loss(self: Tensor, target: Tensor, reduction: int, beta: float) */
   smooth_l1_loss(self: Tensor, target: Tensor, reduction?: number | bigint, beta?: number): Tensor;
-  /** soft_margin_loss(self: Tensor, target: Tensor, reduction: int) */
   soft_margin_loss(self: Tensor, target: Tensor, reduction?: number | bigint): Tensor;
-  /** softmax.int(self: Tensor, dim: int, dtype: Optional[int]) */
   softmax(self: Tensor, dim: number | bigint, dtype?: unknown): Tensor;
-  /** softplus(self: Tensor, beta: number, threshold: number) */
   softplus(self: Tensor, beta?: unknown, threshold?: unknown): Tensor;
-  /** softshrink(self: Tensor, lambd: number) */
   softshrink(self: Tensor, lambd?: unknown): Tensor;
-  /** sort(self: Tensor, dim: int, descending: bool) | sort.stable(self: Tensor, stable: Optional[bool], dim: int, descending: bool) | sort.values_stable(self: Tensor, stable: Optional[bool], dim: int, descending: bool, values: Tensor, indices: Tensor) | sort.values(self: Tensor, dim: int, descending: bool, values: Tensor, indices: Tensor) */
+  sort(self: Tensor, dim?: number | bigint, descending?: boolean): [Tensor, Tensor];
+  sort(self: Tensor, options?: { stable?: unknown; dim?: number | bigint; descending?: boolean }): [Tensor, Tensor];
+  sort(self: Tensor, options?: { stable?: unknown; dim?: number | bigint; descending?: boolean; values?: Tensor; indices?: Tensor }): [Tensor, Tensor];
+  sort(self: Tensor, dim?: number | bigint, descending?: boolean, options?: { values?: Tensor; indices?: Tensor }): [Tensor, Tensor];
   sort(...args: unknown[]): [Tensor, Tensor];
-  /** sparse_bsc_tensor.ccol_row_value(ccol_indices: Tensor, row_indices: Tensor, values: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | sparse_bsc_tensor.ccol_row_value_size(ccol_indices: Tensor, row_indices: Tensor, values: Tensor, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  sparse_bsc_tensor(ccol_indices: Tensor, row_indices: Tensor, values: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  sparse_bsc_tensor(ccol_indices: Tensor, row_indices: Tensor, values: Tensor, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   sparse_bsc_tensor(...args: unknown[]): Tensor;
-  /** sparse_bsr_tensor.crow_col_value_size(crow_indices: Tensor, col_indices: Tensor, values: Tensor, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | sparse_bsr_tensor.crow_col_value(crow_indices: Tensor, col_indices: Tensor, values: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  sparse_bsr_tensor(crow_indices: Tensor, col_indices: Tensor, values: Tensor, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  sparse_bsr_tensor(crow_indices: Tensor, col_indices: Tensor, values: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   sparse_bsr_tensor(...args: unknown[]): Tensor;
-  /** sparse_compressed_tensor.comp_plain_value_size(compressed_indices: Tensor, plain_indices: Tensor, values: Tensor, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | sparse_compressed_tensor.comp_plain_value(compressed_indices: Tensor, plain_indices: Tensor, values: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  sparse_compressed_tensor(compressed_indices: Tensor, plain_indices: Tensor, values: Tensor, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  sparse_compressed_tensor(compressed_indices: Tensor, plain_indices: Tensor, values: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   sparse_compressed_tensor(...args: unknown[]): Tensor;
-  /** sparse_coo_tensor.indices(indices: Tensor, values: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], is_coalesced: Optional[bool]) | sparse_coo_tensor.indices_size(indices: Tensor, values: Tensor, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], is_coalesced: Optional[bool]) | sparse_coo_tensor.size(size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  sparse_coo_tensor(indices: Tensor, values: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; is_coalesced?: unknown }): Tensor;
+  sparse_coo_tensor(indices: Tensor, values: Tensor, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; is_coalesced?: unknown }): Tensor;
+  sparse_coo_tensor(size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   sparse_coo_tensor(...args: unknown[]): Tensor;
-  /** sparse_csc_tensor.ccol_row_value_size(ccol_indices: Tensor, row_indices: Tensor, values: Tensor, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | sparse_csc_tensor.ccol_row_value(ccol_indices: Tensor, row_indices: Tensor, values: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  sparse_csc_tensor(ccol_indices: Tensor, row_indices: Tensor, values: Tensor, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  sparse_csc_tensor(ccol_indices: Tensor, row_indices: Tensor, values: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   sparse_csc_tensor(...args: unknown[]): Tensor;
-  /** sparse_csr_tensor.crow_col_value_size(crow_indices: Tensor, col_indices: Tensor, values: Tensor, size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) | sparse_csr_tensor.crow_col_value(crow_indices: Tensor, col_indices: Tensor, values: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
+  sparse_csr_tensor(crow_indices: Tensor, col_indices: Tensor, values: Tensor, size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
+  sparse_csr_tensor(crow_indices: Tensor, col_indices: Tensor, values: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
   sparse_csr_tensor(...args: unknown[]): Tensor;
-  /** sparse_dim(self: Tensor) */
   sparse_dim(self: Tensor): number;
-  /** sparse_mask(self: Tensor, mask: Tensor) */
   sparse_mask(self: Tensor, mask: Tensor): Tensor;
-  /** sparse_resize(self: Tensor, size: List[int], sparse_dim: int, dense_dim: int) */
   sparse_resize(self: Tensor, size: unknown, sparse_dim: number | bigint, dense_dim: number | bigint): Tensor;
-  /** sparse_resize_(self: Tensor, size: List[int], sparse_dim: int, dense_dim: int) */
   sparse_resize_(self: Tensor, size: unknown, sparse_dim: number | bigint, dense_dim: number | bigint): Tensor;
-  /** sparse_resize_and_clear(self: Tensor, size: List[int], sparse_dim: int, dense_dim: int) */
   sparse_resize_and_clear(self: Tensor, size: unknown, sparse_dim: number | bigint, dense_dim: number | bigint): Tensor;
-  /** sparse_resize_and_clear_(self: Tensor, size: List[int], sparse_dim: int, dense_dim: int) */
   sparse_resize_and_clear_(self: Tensor, size: unknown, sparse_dim: number | bigint, dense_dim: number | bigint): Tensor;
-  /** sparse_sampled_addmm(self: Tensor, mat1: Tensor, mat2: Tensor, beta: number, alpha: number) */
   sparse_sampled_addmm(self: Tensor, mat1: Tensor, mat2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** special_airy_ai(x: Tensor) */
   special_airy_ai(x: Tensor): Tensor;
-  /** special_bessel_j0(self: Tensor) */
   special_bessel_j0(self: Tensor): Tensor;
-  /** special_bessel_j1(self: Tensor) */
   special_bessel_j1(self: Tensor): Tensor;
-  /** special_bessel_y0(self: Tensor) */
   special_bessel_y0(self: Tensor): Tensor;
-  /** special_bessel_y1(self: Tensor) */
   special_bessel_y1(self: Tensor): Tensor;
-  /** special_chebyshev_polynomial_t(x: Tensor, n: Tensor) | special_chebyshev_polynomial_t.n_scalar(x: Tensor, n: number) | special_chebyshev_polynomial_t.x_scalar(x: number, n: Tensor) */
+  special_chebyshev_polynomial_t(x: Tensor, n: Tensor): Tensor;
+  special_chebyshev_polynomial_t(x: Tensor, n: unknown): Tensor;
+  special_chebyshev_polynomial_t(x: unknown, n: Tensor): Tensor;
   special_chebyshev_polynomial_t(...args: unknown[]): Tensor;
-  /** special_chebyshev_polynomial_u.x_scalar(x: number, n: Tensor) | special_chebyshev_polynomial_u(x: Tensor, n: Tensor) | special_chebyshev_polynomial_u.n_scalar(x: Tensor, n: number) */
+  special_chebyshev_polynomial_u(x: unknown, n: Tensor): Tensor;
+  special_chebyshev_polynomial_u(x: Tensor, n: Tensor): Tensor;
+  special_chebyshev_polynomial_u(x: Tensor, n: unknown): Tensor;
   special_chebyshev_polynomial_u(...args: unknown[]): Tensor;
-  /** special_chebyshev_polynomial_v.n_scalar(x: Tensor, n: number) | special_chebyshev_polynomial_v(x: Tensor, n: Tensor) | special_chebyshev_polynomial_v.x_scalar(x: number, n: Tensor) */
+  special_chebyshev_polynomial_v(x: Tensor, n: unknown): Tensor;
+  special_chebyshev_polynomial_v(x: Tensor, n: Tensor): Tensor;
+  special_chebyshev_polynomial_v(x: unknown, n: Tensor): Tensor;
   special_chebyshev_polynomial_v(...args: unknown[]): Tensor;
-  /** special_chebyshev_polynomial_w(x: Tensor, n: Tensor) | special_chebyshev_polynomial_w.x_scalar(x: number, n: Tensor) | special_chebyshev_polynomial_w.n_scalar(x: Tensor, n: number) */
+  special_chebyshev_polynomial_w(x: Tensor, n: Tensor): Tensor;
+  special_chebyshev_polynomial_w(x: unknown, n: Tensor): Tensor;
+  special_chebyshev_polynomial_w(x: Tensor, n: unknown): Tensor;
   special_chebyshev_polynomial_w(...args: unknown[]): Tensor;
-  /** special_digamma(self: Tensor) */
   special_digamma(self: Tensor): Tensor;
-  /** special_entr(self: Tensor) */
   special_entr(self: Tensor): Tensor;
-  /** special_erf(self: Tensor) */
   special_erf(self: Tensor): Tensor;
-  /** special_erfc(self: Tensor) */
   special_erfc(self: Tensor): Tensor;
-  /** special_erfcx(self: Tensor) */
   special_erfcx(self: Tensor): Tensor;
-  /** special_erfinv(self: Tensor) */
   special_erfinv(self: Tensor): Tensor;
-  /** special_exp2(self: Tensor) */
   special_exp2(self: Tensor): Tensor;
-  /** special_expit(self: Tensor) */
   special_expit(self: Tensor): Tensor;
-  /** special_expm1(self: Tensor) */
   special_expm1(self: Tensor): Tensor;
-  /** special_gammainc(self: Tensor, other: Tensor) */
   special_gammainc(self: Tensor, other: Tensor): Tensor;
-  /** special_gammaincc(self: Tensor, other: Tensor) */
   special_gammaincc(self: Tensor, other: Tensor): Tensor;
-  /** special_gammaln(self: Tensor) */
   special_gammaln(self: Tensor): Tensor;
-  /** special_hermite_polynomial_h(x: Tensor, n: Tensor) | special_hermite_polynomial_h.x_scalar(x: number, n: Tensor) | special_hermite_polynomial_h.n_scalar(x: Tensor, n: number) */
+  special_hermite_polynomial_h(x: Tensor, n: Tensor): Tensor;
+  special_hermite_polynomial_h(x: unknown, n: Tensor): Tensor;
+  special_hermite_polynomial_h(x: Tensor, n: unknown): Tensor;
   special_hermite_polynomial_h(...args: unknown[]): Tensor;
-  /** special_hermite_polynomial_he.n_scalar(x: Tensor, n: number) | special_hermite_polynomial_he.x_scalar(x: number, n: Tensor) | special_hermite_polynomial_he(x: Tensor, n: Tensor) */
+  special_hermite_polynomial_he(x: Tensor, n: unknown): Tensor;
+  special_hermite_polynomial_he(x: unknown, n: Tensor): Tensor;
+  special_hermite_polynomial_he(x: Tensor, n: Tensor): Tensor;
   special_hermite_polynomial_he(...args: unknown[]): Tensor;
-  /** special_i0(self: Tensor) */
   special_i0(self: Tensor): Tensor;
-  /** special_i0e(self: Tensor) */
   special_i0e(self: Tensor): Tensor;
-  /** special_i1(self: Tensor) */
   special_i1(self: Tensor): Tensor;
-  /** special_i1e(self: Tensor) */
   special_i1e(self: Tensor): Tensor;
-  /** special_laguerre_polynomial_l.n_scalar(x: Tensor, n: number) | special_laguerre_polynomial_l.x_scalar(x: number, n: Tensor) | special_laguerre_polynomial_l(x: Tensor, n: Tensor) */
+  special_laguerre_polynomial_l(x: Tensor, n: unknown): Tensor;
+  special_laguerre_polynomial_l(x: unknown, n: Tensor): Tensor;
+  special_laguerre_polynomial_l(x: Tensor, n: Tensor): Tensor;
   special_laguerre_polynomial_l(...args: unknown[]): Tensor;
-  /** special_legendre_polynomial_p.n_scalar(x: Tensor, n: number) | special_legendre_polynomial_p.x_scalar(x: number, n: Tensor) | special_legendre_polynomial_p(x: Tensor, n: Tensor) */
+  special_legendre_polynomial_p(x: Tensor, n: unknown): Tensor;
+  special_legendre_polynomial_p(x: unknown, n: Tensor): Tensor;
+  special_legendre_polynomial_p(x: Tensor, n: Tensor): Tensor;
   special_legendre_polynomial_p(...args: unknown[]): Tensor;
-  /** special_log1p(self: Tensor) */
   special_log1p(self: Tensor): Tensor;
-  /** special_log_ndtr(self: Tensor) */
   special_log_ndtr(self: Tensor): Tensor;
-  /** special_log_softmax(self: Tensor, dim: int, dtype: Optional[int]) */
   special_log_softmax(self: Tensor, dim: number | bigint, options?: { dtype?: unknown }): Tensor;
-  /** special_logit(self: Tensor, eps: Optional[float]) */
   special_logit(self: Tensor, eps?: unknown): Tensor;
-  /** special_logsumexp(self: Tensor, dim: List[int], keepdim: bool) */
   special_logsumexp(self: Tensor, dim: unknown, keepdim?: boolean): Tensor;
-  /** special_modified_bessel_i0(self: Tensor) */
   special_modified_bessel_i0(self: Tensor): Tensor;
-  /** special_modified_bessel_i1(self: Tensor) */
   special_modified_bessel_i1(self: Tensor): Tensor;
-  /** special_modified_bessel_k0(self: Tensor) */
   special_modified_bessel_k0(self: Tensor): Tensor;
-  /** special_modified_bessel_k1(self: Tensor) */
   special_modified_bessel_k1(self: Tensor): Tensor;
-  /** special_multigammaln(self: Tensor, p: int) */
   special_multigammaln(self: Tensor, p: number | bigint): Tensor;
-  /** special_ndtr(self: Tensor) */
   special_ndtr(self: Tensor): Tensor;
-  /** special_ndtri(self: Tensor) */
   special_ndtri(self: Tensor): Tensor;
-  /** special_polygamma(n: int, self: Tensor) */
   special_polygamma(n: number | bigint, self: Tensor): Tensor;
-  /** special_psi(self: Tensor) */
   special_psi(self: Tensor): Tensor;
-  /** special_round(self: Tensor, decimals: int) */
   special_round(self: Tensor, options?: { decimals?: number | bigint }): Tensor;
-  /** special_scaled_modified_bessel_k0(x: Tensor) */
   special_scaled_modified_bessel_k0(x: Tensor): Tensor;
-  /** special_scaled_modified_bessel_k1(x: Tensor) */
   special_scaled_modified_bessel_k1(x: Tensor): Tensor;
-  /** special_shifted_chebyshev_polynomial_t(x: Tensor, n: Tensor) | special_shifted_chebyshev_polynomial_t.n_scalar(x: Tensor, n: number) | special_shifted_chebyshev_polynomial_t.x_scalar(x: number, n: Tensor) */
+  special_shifted_chebyshev_polynomial_t(x: Tensor, n: Tensor): Tensor;
+  special_shifted_chebyshev_polynomial_t(x: Tensor, n: unknown): Tensor;
+  special_shifted_chebyshev_polynomial_t(x: unknown, n: Tensor): Tensor;
   special_shifted_chebyshev_polynomial_t(...args: unknown[]): Tensor;
-  /** special_shifted_chebyshev_polynomial_u.x_scalar(x: number, n: Tensor) | special_shifted_chebyshev_polynomial_u.n_scalar(x: Tensor, n: number) | special_shifted_chebyshev_polynomial_u(x: Tensor, n: Tensor) */
+  special_shifted_chebyshev_polynomial_u(x: unknown, n: Tensor): Tensor;
+  special_shifted_chebyshev_polynomial_u(x: Tensor, n: unknown): Tensor;
+  special_shifted_chebyshev_polynomial_u(x: Tensor, n: Tensor): Tensor;
   special_shifted_chebyshev_polynomial_u(...args: unknown[]): Tensor;
-  /** special_shifted_chebyshev_polynomial_v(x: Tensor, n: Tensor) | special_shifted_chebyshev_polynomial_v.x_scalar(x: number, n: Tensor) | special_shifted_chebyshev_polynomial_v.n_scalar(x: Tensor, n: number) */
+  special_shifted_chebyshev_polynomial_v(x: Tensor, n: Tensor): Tensor;
+  special_shifted_chebyshev_polynomial_v(x: unknown, n: Tensor): Tensor;
+  special_shifted_chebyshev_polynomial_v(x: Tensor, n: unknown): Tensor;
   special_shifted_chebyshev_polynomial_v(...args: unknown[]): Tensor;
-  /** special_shifted_chebyshev_polynomial_w.x_scalar(x: number, n: Tensor) | special_shifted_chebyshev_polynomial_w.n_scalar(x: Tensor, n: number) | special_shifted_chebyshev_polynomial_w(x: Tensor, n: Tensor) */
+  special_shifted_chebyshev_polynomial_w(x: unknown, n: Tensor): Tensor;
+  special_shifted_chebyshev_polynomial_w(x: Tensor, n: unknown): Tensor;
+  special_shifted_chebyshev_polynomial_w(x: Tensor, n: Tensor): Tensor;
   special_shifted_chebyshev_polynomial_w(...args: unknown[]): Tensor;
-  /** special_sinc(self: Tensor) */
   special_sinc(self: Tensor): Tensor;
-  /** special_softmax(self: Tensor, dim: int, dtype: Optional[int]) */
   special_softmax(self: Tensor, dim: number | bigint, dtype?: unknown): Tensor;
-  /** special_spherical_bessel_j0(x: Tensor) */
   special_spherical_bessel_j0(x: Tensor): Tensor;
-  /** special_xlog1py.self_scalar(self: number, other: Tensor) | special_xlog1py.other_scalar(self: Tensor, other: number) | special_xlog1py(self: Tensor, other: Tensor) */
+  special_xlog1py(self: unknown, other: Tensor): Tensor;
+  special_xlog1py(self: Tensor, other: unknown): Tensor;
+  special_xlog1py(self: Tensor, other: Tensor): Tensor;
   special_xlog1py(...args: unknown[]): Tensor;
-  /** special_xlogy.other_scalar(self: Tensor, other: number) | special_xlogy(self: Tensor, other: Tensor) | special_xlogy.self_scalar(self: number, other: Tensor) */
+  special_xlogy(self: Tensor, other: unknown): Tensor;
+  special_xlogy(self: Tensor, other: Tensor): Tensor;
+  special_xlogy(self: unknown, other: Tensor): Tensor;
   special_xlogy(...args: unknown[]): Tensor;
-  /** special_zeta.self_scalar(self: number, other: Tensor) | special_zeta.other_scalar(self: Tensor, other: number) | special_zeta(self: Tensor, other: Tensor) */
+  special_zeta(self: unknown, other: Tensor): Tensor;
+  special_zeta(self: Tensor, other: unknown): Tensor;
+  special_zeta(self: Tensor, other: Tensor): Tensor;
   special_zeta(...args: unknown[]): Tensor;
-  /** split.sizes(self: Tensor, split_size: List[int], dim: int) | split.Tensor(self: Tensor, split_size: int, dim: int) */
+  split(self: Tensor, split_size: unknown, dim?: number | bigint): unknown;
+  split(self: Tensor, split_size: number | bigint, dim?: number | bigint): unknown;
   split(...args: unknown[]): unknown;
-  /** split_copy.Tensor(self: Tensor, split_size: int, dim: int) */
   split_copy(self: Tensor, split_size: number | bigint, dim?: number | bigint): unknown;
-  /** split_with_sizes(self: Tensor, split_sizes: List[int], dim: int) */
   split_with_sizes(self: Tensor, split_sizes: unknown, dim?: number | bigint): unknown;
-  /** split_with_sizes_copy(self: Tensor, split_sizes: List[int], dim: int) */
   split_with_sizes_copy(self: Tensor, split_sizes: unknown, dim?: number | bigint): unknown;
-  /** sqrt(self: Tensor) */
   sqrt(self: Tensor): Tensor;
-  /** sqrt_(self: Tensor) */
   sqrt_(self: Tensor): Tensor;
-  /** square(self: Tensor) */
   square(self: Tensor): Tensor;
-  /** square_(self: Tensor) */
   square_(self: Tensor): Tensor;
-  /** squeeze(self: Tensor) | squeeze.dim(self: Tensor, dim: int) | squeeze.dims(self: Tensor, dim: List[int]) */
+  squeeze(self: Tensor): Tensor;
+  squeeze(self: Tensor, dim: number | bigint): Tensor;
+  squeeze(self: Tensor, dim: unknown): Tensor;
   squeeze(...args: unknown[]): Tensor;
-  /** squeeze_.dim(self: Tensor, dim: int) | squeeze_.dims(self: Tensor, dim: List[int]) | squeeze_(self: Tensor) */
+  squeeze_(self: Tensor, dim: number | bigint): Tensor;
+  squeeze_(self: Tensor, dim: unknown): Tensor;
+  squeeze_(self: Tensor): Tensor;
   squeeze_(...args: unknown[]): Tensor;
-  /** squeeze_copy(self: Tensor) | squeeze_copy.dims(self: Tensor, dim: List[int]) | squeeze_copy.dim(self: Tensor, dim: int) */
+  squeeze_copy(self: Tensor): Tensor;
+  squeeze_copy(self: Tensor, dim: unknown): Tensor;
+  squeeze_copy(self: Tensor, dim: number | bigint): Tensor;
   squeeze_copy(...args: unknown[]): Tensor;
-  /** sspaddmm(self: Tensor, mat1: Tensor, mat2: Tensor, beta: number, alpha: number) */
   sspaddmm(self: Tensor, mat1: Tensor, mat2: Tensor, options?: { beta?: unknown; alpha?: unknown }): Tensor;
-  /** stack(tensors: List[Tensor], dim: int) */
   stack(tensors: unknown, dim?: number | bigint): Tensor;
-  /** std.dim(self: Tensor, dim: Optional[List[int]], unbiased: bool, keepdim: bool) | std.correction(self: Tensor, dim: Optional[List[int]], correction: Optional[number], keepdim: bool) | std(self: Tensor, unbiased: bool) */
+  std(self: Tensor, dim: unknown, unbiased?: boolean, keepdim?: boolean): Tensor;
+  std(self: Tensor, dim?: unknown, options?: { correction?: unknown; keepdim?: boolean }): Tensor;
+  std(self: Tensor, unbiased?: boolean): Tensor;
   std(...args: unknown[]): Tensor;
-  /** std_mean(self: Tensor, unbiased: bool) | std_mean.correction(self: Tensor, dim: Optional[List[int]], correction: Optional[number], keepdim: bool) | std_mean.dim(self: Tensor, dim: Optional[List[int]], unbiased: bool, keepdim: bool) */
+  std_mean(self: Tensor, unbiased?: boolean): [Tensor, Tensor];
+  std_mean(self: Tensor, dim?: unknown, options?: { correction?: unknown; keepdim?: boolean }): [Tensor, Tensor];
+  std_mean(self: Tensor, dim: unknown, unbiased?: boolean, keepdim?: boolean): [Tensor, Tensor];
   std_mean(...args: unknown[]): [Tensor, Tensor];
-  /** stft.center(self: Tensor, n_fft: int, hop_length: Optional[int], win_length: Optional[int], window: Optional[Tensor], center: bool, pad_mode: str, normalized: bool, onesided: Optional[bool], return_complex: Optional[bool], align_to_window: Optional[bool]) | stft(self: Tensor, n_fft: int, hop_length: Optional[int], win_length: Optional[int], window: Optional[Tensor], normalized: bool, onesided: Optional[bool], return_complex: Optional[bool], align_to_window: Optional[bool]) */
+  stft(self: Tensor, n_fft: number | bigint, hop_length?: unknown, win_length?: unknown, window?: unknown, center?: boolean, pad_mode?: string, normalized?: boolean, onesided?: unknown, return_complex?: unknown, align_to_window?: unknown): Tensor;
+  stft(self: Tensor, n_fft: number | bigint, hop_length?: unknown, win_length?: unknown, window?: unknown, normalized?: boolean, onesided?: unknown, return_complex?: unknown, align_to_window?: unknown): Tensor;
   stft(...args: unknown[]): Tensor;
-  /** storage_offset(self: Tensor) */
   storage_offset(self: Tensor): number;
-  /** stride.int(self: Tensor, dim: int) */
   stride(self: Tensor, dim: number | bigint): number;
-  /** sub.Tensor(self: Tensor, other: Tensor, alpha: number) | sub.Scalar(self: Tensor, other: number, alpha: number) */
+  sub(self: Tensor, other: Tensor, options?: { alpha?: unknown }): Tensor;
+  sub(self: Tensor, other: unknown, alpha?: unknown): Tensor;
   sub(...args: unknown[]): Tensor;
-  /** sub_.Tensor(self: Tensor, other: Tensor, alpha: number) | sub_.Scalar(self: Tensor, other: number, alpha: number) */
+  sub_(self: Tensor, other: Tensor, options?: { alpha?: unknown }): Tensor;
+  sub_(self: Tensor, other: unknown, alpha?: unknown): Tensor;
   sub_(...args: unknown[]): Tensor;
-  /** subtract.Scalar(self: Tensor, other: number, alpha: number) | subtract.Tensor(self: Tensor, other: Tensor, alpha: number) */
+  subtract(self: Tensor, other: unknown, alpha?: unknown): Tensor;
+  subtract(self: Tensor, other: Tensor, options?: { alpha?: unknown }): Tensor;
   subtract(...args: unknown[]): Tensor;
-  /** subtract_.Scalar(self: Tensor, other: number, alpha: number) | subtract_.Tensor(self: Tensor, other: Tensor, alpha: number) */
+  subtract_(self: Tensor, other: unknown, alpha?: unknown): Tensor;
+  subtract_(self: Tensor, other: Tensor, options?: { alpha?: unknown }): Tensor;
   subtract_(...args: unknown[]): Tensor;
-  /** sum(self: Tensor, dtype: Optional[int]) | sum.dim_IntList(self: Tensor, dim: Optional[List[int]], keepdim: bool, dtype: Optional[int]) */
+  sum(self: Tensor, options?: { dtype?: unknown }): Tensor;
+  sum(self: Tensor, dim: unknown, keepdim?: boolean, options?: { dtype?: unknown }): Tensor;
   sum(...args: unknown[]): Tensor;
-  /** sum_to_size(self: Tensor, size: List[int]) */
   sum_to_size(self: Tensor, size: unknown): Tensor;
-  /** svd(self: Tensor, some: bool, compute_uv: bool) | svd.U(self: Tensor, some: bool, compute_uv: bool, U: Tensor, S: Tensor, V: Tensor) */
+  svd(self: Tensor, some?: boolean, compute_uv?: boolean): [Tensor, Tensor, Tensor];
+  svd(self: Tensor, some?: boolean, compute_uv?: boolean, options?: { U?: Tensor; S?: Tensor; V?: Tensor }): [Tensor, Tensor, Tensor];
   svd(...args: unknown[]): [Tensor, Tensor, Tensor];
-  /** swapaxes(self: Tensor, axis0: int, axis1: int) */
   swapaxes(self: Tensor, axis0: number | bigint, axis1: number | bigint): Tensor;
-  /** swapaxes_(self: Tensor, axis0: int, axis1: int) */
   swapaxes_(self: Tensor, axis0: number | bigint, axis1: number | bigint): Tensor;
-  /** swapdims(self: Tensor, dim0: int, dim1: int) */
   swapdims(self: Tensor, dim0: number | bigint, dim1: number | bigint): Tensor;
-  /** swapdims_(self: Tensor, dim0: int, dim1: int) */
   swapdims_(self: Tensor, dim0: number | bigint, dim1: number | bigint): Tensor;
-  /** sym_constrain_range(size: number, min: Optional[int], max: Optional[int]) */
   sym_constrain_range(size: unknown, options?: { min?: unknown; max?: unknown }): void;
-  /** sym_constrain_range_for_size(size: number, min: Optional[int], max: Optional[int]) */
   sym_constrain_range_for_size(size: unknown, options?: { min?: unknown; max?: unknown }): void;
-  /** sym_is_contiguous(self: Tensor, memory_format: int) */
   sym_is_contiguous(self: Tensor, memory_format?: string | number): boolean;
-  /** sym_numel(self: Tensor) */
   sym_numel(self: Tensor): number;
-  /** sym_size.int(self: Tensor, dim: int) */
   sym_size(self: Tensor, dim: number | bigint): number;
-  /** sym_storage_offset(self: Tensor) */
   sym_storage_offset(self: Tensor): number;
-  /** sym_stride.int(self: Tensor, dim: int) */
   sym_stride(self: Tensor, dim: number | bigint): number;
-  /** t(self: Tensor) */
   t(self: Tensor): Tensor;
-  /** t_(self: Tensor) */
   t_(self: Tensor): Tensor;
-  /** t_copy(self: Tensor) */
   t_copy(self: Tensor): Tensor;
-  /** take(self: Tensor, index: Tensor) */
   take(self: Tensor, index: Tensor): Tensor;
-  /** take_along_dim(self: Tensor, indices: Tensor, dim: Optional[int]) */
   take_along_dim(self: Tensor, indices: Tensor, dim?: unknown): Tensor;
-  /** tan(self: Tensor) */
   tan(self: Tensor): Tensor;
-  /** tan_(self: Tensor) */
   tan_(self: Tensor): Tensor;
-  /** tanh(self: Tensor) */
   tanh(self: Tensor): Tensor;
-  /** tanh_(self: Tensor) */
   tanh_(self: Tensor): Tensor;
-  /** tensor_split.tensor_indices_or_sections(self: Tensor, tensor_indices_or_sections: Tensor, dim: int) | tensor_split.sections(self: Tensor, sections: int, dim: int) | tensor_split.indices(self: Tensor, indices: List[int], dim: int) */
+  tensor_split(self: Tensor, tensor_indices_or_sections: Tensor, dim?: number | bigint): unknown;
+  tensor_split(self: Tensor, sections: number | bigint, dim?: number | bigint): unknown;
+  tensor_split(self: Tensor, indices: unknown, dim?: number | bigint): unknown;
   tensor_split(...args: unknown[]): unknown;
-  /** tensordot(self: Tensor, other: Tensor, dims_self: List[int], dims_other: List[int]) */
   tensordot(self: Tensor, other: Tensor, dims_self: unknown, dims_other: unknown): Tensor;
-  /** thnn_conv2d(self: Tensor, weight: Tensor, kernel_size: List[int], bias: Optional[Tensor], stride: List[int], padding: List[int]) */
   thnn_conv2d(self: Tensor, weight: Tensor, kernel_size: unknown, bias?: unknown, stride?: unknown, padding?: unknown): Tensor;
-  /** threshold(self: Tensor, threshold: number, value: number) */
   threshold(self: Tensor, threshold: unknown, value: unknown): Tensor;
-  /** threshold_(self: Tensor, threshold: number, value: number) */
   threshold_(self: Tensor, threshold: unknown, value: unknown): Tensor;
-  /** tile(self: Tensor, dims: List[int]) */
   tile(self: Tensor, dims: unknown): Tensor;
-  /** to.device(self: Tensor, device: Device, dtype: int, non_blocking: bool, copy: bool, memory_format: Optional[int]) | to.other(self: Tensor, other: Tensor, non_blocking: bool, copy: bool, memory_format: Optional[int]) | to.dtype(self: Tensor, dtype: int, non_blocking: bool, copy: bool, memory_format: Optional[int]) */
+  to(self: Tensor, device: DeviceLike, dtype: DType | number, non_blocking?: boolean, copy?: boolean, memory_format?: unknown): Tensor;
+  to(self: Tensor, other: Tensor, non_blocking?: boolean, copy?: boolean, memory_format?: unknown): Tensor;
+  to(self: Tensor, dtype: DType | number, non_blocking?: boolean, copy?: boolean, memory_format?: unknown): Tensor;
   to(...args: unknown[]): Tensor;
-  /** to_dense(self: Tensor, dtype: Optional[int], masked_grad: Optional[bool]) */
   to_dense(self: Tensor, dtype?: unknown, options?: { masked_grad?: unknown }): Tensor;
-  /** to_mkldnn(self: Tensor, dtype: Optional[int]) */
   to_mkldnn(self: Tensor, dtype?: unknown): Tensor;
-  /** to_padded_tensor(self: Tensor, padding: float, output_size: Optional[List[int]]) */
   to_padded_tensor(self: Tensor, padding: number, output_size?: unknown): Tensor;
-  /** to_sparse.sparse_dim(self: Tensor, sparse_dim: int) | to_sparse(self: Tensor, layout: Optional[int], blocksize: Optional[List[int]], dense_dim: Optional[int]) */
+  to_sparse(self: Tensor, sparse_dim: number | bigint): Tensor;
+  to_sparse(self: Tensor, options?: { layout?: unknown; blocksize?: unknown; dense_dim?: unknown }): Tensor;
   to_sparse(...args: unknown[]): Tensor;
-  /** to_sparse_bsc(self: Tensor, blocksize: List[int], dense_dim: Optional[int]) */
   to_sparse_bsc(self: Tensor, blocksize: unknown, dense_dim?: unknown): Tensor;
-  /** to_sparse_bsr(self: Tensor, blocksize: List[int], dense_dim: Optional[int]) */
   to_sparse_bsr(self: Tensor, blocksize: unknown, dense_dim?: unknown): Tensor;
-  /** to_sparse_csc(self: Tensor, dense_dim: Optional[int]) */
   to_sparse_csc(self: Tensor, dense_dim?: unknown): Tensor;
-  /** to_sparse_csr(self: Tensor, dense_dim: Optional[int]) */
   to_sparse_csr(self: Tensor, dense_dim?: unknown): Tensor;
-  /** topk(self: Tensor, k: int, dim: int, largest: bool, sorted: bool) | topk.values(self: Tensor, k: int, dim: int, largest: bool, sorted: bool, values: Tensor, indices: Tensor) */
+  topk(self: Tensor, k: number | bigint, dim?: number | bigint, largest?: boolean, sorted?: boolean): [Tensor, Tensor];
+  topk(self: Tensor, k: number | bigint, dim?: number | bigint, largest?: boolean, sorted?: boolean, options?: { values?: Tensor; indices?: Tensor }): [Tensor, Tensor];
   topk(...args: unknown[]): [Tensor, Tensor];
-  /** trace(self: Tensor) */
   trace(self: Tensor): Tensor;
-  /** transpose.int(self: Tensor, dim0: int, dim1: int) */
   transpose(self: Tensor, dim0: number | bigint, dim1: number | bigint): Tensor;
-  /** transpose_(self: Tensor, dim0: int, dim1: int) */
   transpose_(self: Tensor, dim0: number | bigint, dim1: number | bigint): Tensor;
-  /** transpose_copy.int(self: Tensor, dim0: int, dim1: int) */
   transpose_copy(self: Tensor, dim0: number | bigint, dim1: number | bigint): Tensor;
-  /** trapezoid.x(y: Tensor, x: Tensor, dim: int) | trapezoid.dx(y: Tensor, dx: number, dim: int) */
+  trapezoid(y: Tensor, x: Tensor, options?: { dim?: number | bigint }): Tensor;
+  trapezoid(y: Tensor, options?: { dx?: unknown; dim?: number | bigint }): Tensor;
   trapezoid(...args: unknown[]): Tensor;
-  /** trapz.x(y: Tensor, x: Tensor, dim: int) | trapz.dx(y: Tensor, dx: float, dim: int) */
+  trapz(y: Tensor, x: Tensor, options?: { dim?: number | bigint }): Tensor;
+  trapz(y: Tensor, options?: { dx?: number; dim?: number | bigint }): Tensor;
   trapz(...args: unknown[]): Tensor;
-  /** triangular_solve.X(self: Tensor, A: Tensor, upper: bool, transpose: bool, unitriangular: bool, X: Tensor, M: Tensor) | triangular_solve(self: Tensor, A: Tensor, upper: bool, transpose: bool, unitriangular: bool) */
+  triangular_solve(self: Tensor, A: Tensor, upper?: boolean, transpose?: boolean, unitriangular?: boolean, options?: { X?: Tensor; M?: Tensor }): [Tensor, Tensor];
+  triangular_solve(self: Tensor, A: Tensor, upper?: boolean, transpose?: boolean, unitriangular?: boolean): [Tensor, Tensor];
   triangular_solve(...args: unknown[]): [Tensor, Tensor];
-  /** tril(self: Tensor, diagonal: int) */
   tril(self: Tensor, diagonal?: number | bigint): Tensor;
-  /** tril_(self: Tensor, diagonal: int) */
   tril_(self: Tensor, diagonal?: number | bigint): Tensor;
-  /** tril_indices(row: int, col: int, offset: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   tril_indices(row: number | bigint, col: number | bigint, offset?: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** triplet_margin_loss(anchor: Tensor, positive: Tensor, negative: Tensor, margin: float, p: float, eps: float, swap: bool, reduction: int) */
   triplet_margin_loss(anchor: Tensor, positive: Tensor, negative: Tensor, margin?: number, p?: number, eps?: number, swap?: boolean, reduction?: number | bigint): Tensor;
-  /** triu(self: Tensor, diagonal: int) */
   triu(self: Tensor, diagonal?: number | bigint): Tensor;
-  /** triu_(self: Tensor, diagonal: int) */
   triu_(self: Tensor, diagonal?: number | bigint): Tensor;
-  /** triu_indices(row: int, col: int, offset: int, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   triu_indices(row: number | bigint, col: number | bigint, offset?: number | bigint, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** true_divide.Scalar(self: Tensor, other: number) | true_divide.Tensor(self: Tensor, other: Tensor) */
+  true_divide(self: Tensor, other: unknown): Tensor;
+  true_divide(self: Tensor, other: Tensor): Tensor;
   true_divide(...args: unknown[]): Tensor;
-  /** true_divide_.Tensor(self: Tensor, other: Tensor) | true_divide_.Scalar(self: Tensor, other: number) */
+  true_divide_(self: Tensor, other: Tensor): Tensor;
+  true_divide_(self: Tensor, other: unknown): Tensor;
   true_divide_(...args: unknown[]): Tensor;
-  /** trunc(self: Tensor) */
   trunc(self: Tensor): Tensor;
-  /** trunc_(self: Tensor) */
   trunc_(self: Tensor): Tensor;
-  /** type_as(self: Tensor, other: Tensor) */
   type_as(self: Tensor, other: Tensor): Tensor;
-  /** unbind.int(self: Tensor, dim: int) */
   unbind(self: Tensor, dim?: number | bigint): unknown;
-  /** unbind_copy.int(self: Tensor, dim: int) */
   unbind_copy(self: Tensor, dim?: number | bigint): unknown;
-  /** unflatten.int(self: Tensor, dim: int, sizes: List[int]) */
   unflatten(self: Tensor, dim: number | bigint, sizes: unknown): Tensor;
-  /** unflatten_dense_tensors(flat: Tensor, tensors: List[Tensor]) */
   unflatten_dense_tensors(flat: Tensor, tensors: unknown): unknown;
-  /** unfold(self: Tensor, dimension: int, size: int, step: int) */
   unfold(self: Tensor, dimension: number | bigint, size: number | bigint, step: number | bigint): Tensor;
-  /** unfold_copy(self: Tensor, dimension: int, size: int, step: int) */
   unfold_copy(self: Tensor, dimension: number | bigint, size: number | bigint, step: number | bigint): Tensor;
-  /** uniform(self: Tensor, from: float, to: float, generator: Optional[Generator]) */
   uniform(self: Tensor, from?: number, to?: number, options?: { generator?: unknown }): Tensor;
-  /** uniform_(self: Tensor, from: float, to: float, generator: Optional[Generator]) */
   uniform_(self: Tensor, from?: number, to?: number, options?: { generator?: unknown }): Tensor;
-  /** unique_consecutive(self: Tensor, return_inverse: bool, return_counts: bool, dim: Optional[int]) */
   unique_consecutive(self: Tensor, return_inverse?: boolean, return_counts?: boolean, dim?: unknown): [Tensor, Tensor, Tensor];
-  /** unique_dim(self: Tensor, dim: int, sorted: bool, return_inverse: bool, return_counts: bool) */
   unique_dim(self: Tensor, dim: number | bigint, sorted?: boolean, return_inverse?: boolean, return_counts?: boolean): [Tensor, Tensor, Tensor];
-  /** unique_dim_consecutive(self: Tensor, dim: int, return_inverse: bool, return_counts: bool) */
   unique_dim_consecutive(self: Tensor, dim: number | bigint, return_inverse?: boolean, return_counts?: boolean): [Tensor, Tensor, Tensor];
-  /** unsafe_chunk(self: Tensor, chunks: int, dim: int) */
   unsafe_chunk(self: Tensor, chunks: number | bigint, dim?: number | bigint): unknown;
-  /** unsafe_split.Tensor(self: Tensor, split_size: int, dim: int) */
   unsafe_split(self: Tensor, split_size: number | bigint, dim?: number | bigint): unknown;
-  /** unsafe_split_with_sizes(self: Tensor, split_sizes: List[int], dim: int) */
   unsafe_split_with_sizes(self: Tensor, split_sizes: unknown, dim?: number | bigint): unknown;
-  /** unsqueeze(self: Tensor, dim: int) */
   unsqueeze(self: Tensor, dim: number | bigint): Tensor;
-  /** unsqueeze_(self: Tensor, dim: int) */
   unsqueeze_(self: Tensor, dim: number | bigint): Tensor;
-  /** unsqueeze_copy(self: Tensor, dim: int) */
   unsqueeze_copy(self: Tensor, dim: number | bigint): Tensor;
-  /** upsample_bicubic2d.vec(input: Tensor, output_size: Optional[List[int]], align_corners: bool, scale_factors: Optional[List[float]]) | upsample_bicubic2d(self: Tensor, output_size: List[int], align_corners: bool, scales_h: Optional[float], scales_w: Optional[float]) */
+  upsample_bicubic2d(input: Tensor, output_size: unknown, align_corners: boolean, scale_factors: unknown): Tensor;
+  upsample_bicubic2d(self: Tensor, output_size: unknown, align_corners: boolean, scales_h?: unknown, scales_w?: unknown): Tensor;
   upsample_bicubic2d(...args: unknown[]): Tensor;
-  /** upsample_bilinear2d.vec(input: Tensor, output_size: Optional[List[int]], align_corners: bool, scale_factors: Optional[List[float]]) | upsample_bilinear2d(self: Tensor, output_size: List[int], align_corners: bool, scales_h: Optional[float], scales_w: Optional[float]) */
+  upsample_bilinear2d(input: Tensor, output_size: unknown, align_corners: boolean, scale_factors: unknown): Tensor;
+  upsample_bilinear2d(self: Tensor, output_size: unknown, align_corners: boolean, scales_h?: unknown, scales_w?: unknown): Tensor;
   upsample_bilinear2d(...args: unknown[]): Tensor;
-  /** upsample_linear1d(self: Tensor, output_size: List[int], align_corners: bool, scales: Optional[float]) | upsample_linear1d.vec(input: Tensor, output_size: Optional[List[int]], align_corners: bool, scale_factors: Optional[List[float]]) */
+  upsample_linear1d(self: Tensor, output_size: unknown, align_corners: boolean, scales?: unknown): Tensor;
+  upsample_linear1d(input: Tensor, output_size: unknown, align_corners: boolean, scale_factors: unknown): Tensor;
   upsample_linear1d(...args: unknown[]): Tensor;
-  /** upsample_nearest1d.vec(input: Tensor, output_size: Optional[List[int]], scale_factors: Optional[List[float]]) | upsample_nearest1d(self: Tensor, output_size: List[int], scales: Optional[float]) */
+  upsample_nearest1d(input: Tensor, output_size: unknown, scale_factors: unknown): Tensor;
+  upsample_nearest1d(self: Tensor, output_size: unknown, scales?: unknown): Tensor;
   upsample_nearest1d(...args: unknown[]): Tensor;
-  /** upsample_nearest2d(self: Tensor, output_size: List[int], scales_h: Optional[float], scales_w: Optional[float]) | upsample_nearest2d.vec(input: Tensor, output_size: Optional[List[int]], scale_factors: Optional[List[float]]) */
+  upsample_nearest2d(self: Tensor, output_size: unknown, scales_h?: unknown, scales_w?: unknown): Tensor;
+  upsample_nearest2d(input: Tensor, output_size: unknown, scale_factors: unknown): Tensor;
   upsample_nearest2d(...args: unknown[]): Tensor;
-  /** upsample_nearest3d.vec(input: Tensor, output_size: Optional[List[int]], scale_factors: Optional[List[float]]) | upsample_nearest3d(self: Tensor, output_size: List[int], scales_d: Optional[float], scales_h: Optional[float], scales_w: Optional[float]) */
+  upsample_nearest3d(input: Tensor, output_size: unknown, scale_factors: unknown): Tensor;
+  upsample_nearest3d(self: Tensor, output_size: unknown, scales_d?: unknown, scales_h?: unknown, scales_w?: unknown): Tensor;
   upsample_nearest3d(...args: unknown[]): Tensor;
-  /** upsample_trilinear3d(self: Tensor, output_size: List[int], align_corners: bool, scales_d: Optional[float], scales_h: Optional[float], scales_w: Optional[float]) | upsample_trilinear3d.vec(input: Tensor, output_size: Optional[List[int]], align_corners: bool, scale_factors: Optional[List[float]]) */
+  upsample_trilinear3d(self: Tensor, output_size: unknown, align_corners: boolean, scales_d?: unknown, scales_h?: unknown, scales_w?: unknown): Tensor;
+  upsample_trilinear3d(input: Tensor, output_size: unknown, align_corners: boolean, scale_factors: unknown): Tensor;
   upsample_trilinear3d(...args: unknown[]): Tensor;
-  /** values(self: Tensor) */
   values(self: Tensor): Tensor;
-  /** values_copy(self: Tensor) */
   values_copy(self: Tensor): Tensor;
-  /** vander(x: Tensor, N: Optional[int], increasing: bool) */
   vander(x: Tensor, N?: unknown, increasing?: boolean): Tensor;
-  /** var.correction(self: Tensor, dim: Optional[List[int]], correction: Optional[number], keepdim: bool) | var(self: Tensor, unbiased: bool) | var.dim(self: Tensor, dim: Optional[List[int]], unbiased: bool, keepdim: bool) */
+  var(self: Tensor, dim?: unknown, options?: { correction?: unknown; keepdim?: boolean }): Tensor;
+  var(self: Tensor, unbiased?: boolean): Tensor;
+  var(self: Tensor, dim: unknown, unbiased?: boolean, keepdim?: boolean): Tensor;
   var(...args: unknown[]): Tensor;
-  /** var_mean.dim(self: Tensor, dim: Optional[List[int]], unbiased: bool, keepdim: bool) | var_mean.correction(self: Tensor, dim: Optional[List[int]], correction: Optional[number], keepdim: bool) | var_mean(self: Tensor, unbiased: bool) */
+  var_mean(self: Tensor, dim: unknown, unbiased?: boolean, keepdim?: boolean): [Tensor, Tensor];
+  var_mean(self: Tensor, dim?: unknown, options?: { correction?: unknown; keepdim?: boolean }): [Tensor, Tensor];
+  var_mean(self: Tensor, unbiased?: boolean): [Tensor, Tensor];
   var_mean(...args: unknown[]): [Tensor, Tensor];
-  /** vdot(self: Tensor, other: Tensor) */
   vdot(self: Tensor, other: Tensor): Tensor;
-  /** view(self: Tensor, size: List[int]) | view.dtype(self: Tensor, dtype: int) */
+  view(self: Tensor, size: unknown): Tensor;
+  view(self: Tensor, dtype: DType | number): Tensor;
   view(...args: unknown[]): Tensor;
-  /** view_as(self: Tensor, other: Tensor) */
   view_as(self: Tensor, other: Tensor): Tensor;
-  /** view_as_complex(self: Tensor) */
   view_as_complex(self: Tensor): Tensor;
-  /** view_as_complex_copy(self: Tensor) */
   view_as_complex_copy(self: Tensor): Tensor;
-  /** view_as_real(self: Tensor) */
   view_as_real(self: Tensor): Tensor;
-  /** view_as_real_copy(self: Tensor) */
   view_as_real_copy(self: Tensor): Tensor;
-  /** view_copy.dtype(self: Tensor, dtype: int) | view_copy(self: Tensor, size: List[int]) */
+  view_copy(self: Tensor, dtype: DType | number): Tensor;
+  view_copy(self: Tensor, size: unknown): Tensor;
   view_copy(...args: unknown[]): Tensor;
-  /** vsplit.int(self: Tensor, sections: int) | vsplit.array(self: Tensor, indices: List[int]) */
+  vsplit(self: Tensor, sections: number | bigint): unknown;
+  vsplit(self: Tensor, indices: unknown): unknown;
   vsplit(...args: unknown[]): unknown;
-  /** vstack(tensors: List[Tensor]) */
   vstack(tensors: unknown): Tensor;
-  /** where(condition: Tensor) | where.ScalarOther(condition: Tensor, self: Tensor, other: number) | where.self(condition: Tensor, self: Tensor, other: Tensor) | where.ScalarSelf(condition: Tensor, self: number, other: Tensor) */
+  where(condition: Tensor): unknown;
+  where(condition: Tensor, self: Tensor, other: unknown): Tensor;
+  where(condition: Tensor, self: Tensor, other: Tensor): Tensor;
+  where(condition: Tensor, self: unknown, other: Tensor): Tensor;
+  where(condition: Tensor, self: unknown, other: unknown): Tensor;
   where(...args: unknown[]): unknown;
-  /** xlogy.Tensor(self: Tensor, other: Tensor) | xlogy.OutScalar_Self(self: number, other: Tensor, out: Tensor) | xlogy.Scalar_Self(self: number, other: Tensor) | xlogy.OutScalar_Other(self: Tensor, other: number, out: Tensor) */
+  xlogy(self: Tensor, other: Tensor): Tensor;
+  xlogy(self: unknown, other: Tensor, options?: { out?: Tensor }): Tensor;
+  xlogy(self: unknown, other: Tensor): Tensor;
+  xlogy(self: Tensor, other: unknown, options?: { out?: Tensor }): Tensor;
+  xlogy(self: Tensor, other: Tensor, options?: { out?: Tensor }): Tensor;
+  xlogy(self: Tensor, other: unknown): Tensor;
   xlogy(...args: unknown[]): Tensor;
-  /** xlogy_.Tensor(self: Tensor, other: Tensor) | xlogy_.Scalar_Other(self: Tensor, other: number) */
+  xlogy_(self: Tensor, other: Tensor): Tensor;
+  xlogy_(self: Tensor, other: unknown): Tensor;
   xlogy_(...args: unknown[]): Tensor;
-  /** zero(self: Tensor) */
   zero(self: Tensor): Tensor;
-  /** zero_(self: Tensor) */
   zero_(self: Tensor): Tensor;
-  /** zeros(size: List[int], dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool]) */
   zeros(size: unknown, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown }): Tensor;
-  /** zeros_like(self: Tensor, dtype: Optional[int], layout: Optional[int], device: Optional[Device], pin_memory: Optional[bool], memory_format: Optional[int]) */
   zeros_like(self: Tensor, options?: { dtype?: unknown; layout?: unknown; device?: unknown; pin_memory?: unknown; memory_format?: unknown }): Tensor;
 }
 
@@ -3065,6 +2590,7 @@ function isPlainOptionsObject(v: unknown): v is Record<string, unknown> {
   if (v === null || typeof v !== 'object') return false;
   if (Array.isArray(v) || ArrayBuffer.isView(v)) return false;
   if (v instanceof Tensor) return false;
+  if ('_native' in v) return false;
   const proto = Object.getPrototypeOf(v);
   return proto === Object.prototype || proto === null;
 }

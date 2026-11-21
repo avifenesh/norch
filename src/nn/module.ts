@@ -10,16 +10,58 @@ export interface LoadStateDictResult {
   unexpectedKeys: string[];
 }
 
+export interface HookHandle extends Disposable {
+  remove(): void;
+}
+
+export type ForwardPreHook = (module: Module, inputs: unknown[]) => unknown[] | void;
+export type ForwardHook = (module: Module, inputs: unknown[], output: unknown) => unknown | void;
+
 export abstract class Module implements Disposable {
   protected readonly _parameters = new Map<string, Parameter | null>();
   protected readonly _buffers = new Map<string, Tensor | null>();
   protected readonly _modules = new Map<string, Module | null>();
+  private readonly _forwardPreHooks = new Map<number, ForwardPreHook>();
+  private readonly _forwardHooks = new Map<number, ForwardHook>();
+  private _nextHookId = 1;
   training = true;
 
   abstract forward(...args: unknown[]): unknown;
 
+  registerForwardPreHook(hook: ForwardPreHook): HookHandle {
+    const id = this._nextHookId++;
+    this._forwardPreHooks.set(id, hook);
+    const remove = (): void => {
+      this._forwardPreHooks.delete(id);
+    };
+    return { remove, [Symbol.dispose]: remove };
+  }
+
+  registerForwardHook(hook: ForwardHook): HookHandle {
+    const id = this._nextHookId++;
+    this._forwardHooks.set(id, hook);
+    const remove = (): void => {
+      this._forwardHooks.delete(id);
+    };
+    return { remove, [Symbol.dispose]: remove };
+  }
+
   call(...args: unknown[]): unknown {
-    return this.forward(...args);
+    let inputs = args;
+    for (const hook of this._forwardPreHooks.values()) {
+      const modified = hook(this, inputs);
+      if (modified !== undefined) {
+        inputs = modified;
+      }
+    }
+    let output = this.forward(...inputs);
+    for (const hook of this._forwardHooks.values()) {
+      const modified = hook(this, inputs, output);
+      if (modified !== undefined) {
+        output = modified;
+      }
+    }
+    return output;
   }
 
   registerParameter(name: string, param: Parameter | null): void {
@@ -171,36 +213,56 @@ export abstract class Module implements Disposable {
     }
   }
 
-  /** Moves all parameters and buffers to the given device/dtype in-place. */
+  /** Moves all parameters and buffers to the given device/dtype in-place, preserving tied weights. */
   to(target: DeviceLike | DType | ToOptions): this {
+    const movedParams = new Map<Parameter, Parameter>();
+    const movedBuffers = new Map<Tensor, Tensor>();
+    const visitedModules = new Set<Module>();
+
     const applyToModule = (mod: Module): void => {
+      if (visitedModules.has(mod)) return;
+      visitedModules.add(mod);
       const { params, buffers, modules } = mod.discoverMembers();
       noGrad(() => {
         for (const [key, p] of params) {
-          const movedRaw = p.to(target);
-          const moved = new Parameter(movedRaw, p.requiresGrad);
-          movedRaw.dispose();
+          let moved = movedParams.get(p);
+          if (!moved) {
+            const movedRaw = p.to(target);
+            moved = new Parameter(movedRaw, p.requiresGrad);
+            movedRaw.dispose();
+            movedParams.set(p, moved);
+          }
           if (mod._parameters.has(key)) mod._parameters.set(key, moved);
           if (Object.prototype.hasOwnProperty.call(mod, key)) {
             (mod as unknown as Record<string, unknown>)[key] = moved;
           }
-          p.dispose();
         }
         for (const [key, b] of buffers) {
-          const moved = b.to(target);
-          untrackTensor(moved);
+          let moved = movedBuffers.get(b);
+          if (!moved) {
+            moved = b.to(target);
+            untrackTensor(moved);
+            movedBuffers.set(b, moved);
+          }
           if (mod._buffers.has(key)) mod._buffers.set(key, moved);
           if (Object.prototype.hasOwnProperty.call(mod, key)) {
             (mod as unknown as Record<string, unknown>)[key] = moved;
           }
-          b.dispose();
         }
       });
       for (const child of modules.values()) {
         applyToModule(child);
       }
     };
+
     applyToModule(this);
+    // Dispose replaced originals once (safe even when parameters/buffers were tied across submodules)
+    for (const oldParam of movedParams.keys()) {
+      if (!oldParam.isDisposed) oldParam.dispose();
+    }
+    for (const oldBuf of movedBuffers.keys()) {
+      if (!oldBuf.isDisposed) oldBuf.dispose();
+    }
     return this;
   }
 

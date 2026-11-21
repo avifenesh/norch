@@ -180,7 +180,10 @@ export class AutogradContext {
   [key: string]: unknown;
   _toSave: NativeTensor[] = [];
   _nonDifferentiable: NativeTensor[] = [];
+  _dirtyInputs: NativeTensor[] = [];
+  _materializeGrads = true;
   _savedNativeTensors: (NativeTensor | null)[] = [];
+  needsInputGrad: boolean[] = [];
 
   saveForBackward(...tensors: Tensor[]): void {
     this._toSave = tensors.map((t) => t._native);
@@ -188,6 +191,14 @@ export class AutogradContext {
 
   markNonDifferentiable(...tensors: Tensor[]): void {
     this._nonDifferentiable = tensors.map((t) => t._native);
+  }
+
+  markDirty(...tensors: Tensor[]): void {
+    this._dirtyInputs = tensors.map((t) => t._native);
+  }
+
+  setMaterializeGrads(value: boolean): void {
+    this._materializeGrads = value;
   }
 
   get savedTensors(): Tensor[] {
@@ -251,3 +262,55 @@ export abstract class AutogradFunction {
     return multiOutput ? wrapped : wrapped[0]!;
   }
 }
+
+let activeDualLevel = -1;
+
+export const forwardAD = {
+  dualLevel<T>(fn: (level: number) => T): T {
+    const level = native.enterDualLevel();
+    const prev = activeDualLevel;
+    activeDualLevel = level;
+    try {
+      return fn(level);
+    } finally {
+      activeDualLevel = prev;
+      native.exitDualLevel(level);
+    }
+  },
+
+  makeDual(primal: Tensor, tangent: Tensor, level = activeDualLevel): Tensor {
+    if (level < 0) {
+      throw new Error('makeDual() must be called inside forwardAD.dualLevel() or with an explicit level');
+    }
+    return wrapTensor(native.makeDual(primal._native, tangent._native, level));
+  },
+
+  unpackDual(dual: Tensor, level = activeDualLevel): { primal: Tensor; tangent: Tensor | null } {
+    if (level < 0) {
+      throw new Error('unpackDual() must be called inside forwardAD.dualLevel() or with an explicit level');
+    }
+    const { primal, tangent } = native.unpackDual(dual._native, level);
+    return { primal: wrapTensor(primal), tangent: tangent ? wrapTensor(tangent) : null };
+  },
+
+  /** Compute exact Jacobian-vector product (f(x), J_f(x) @ v) using forward-mode AD. */
+  jvp(
+    fn: (...inputs: Tensor[]) => Tensor,
+    primals: Tensor | Tensor[],
+    tangents: Tensor | Tensor[]
+  ): { output: Tensor; jvp: Tensor | null } {
+    const pList = Array.isArray(primals) ? primals : [primals];
+    const tList = Array.isArray(tangents) ? tangents : [tangents];
+    if (pList.length !== tList.length) {
+      throw new RangeError('primals and tangents must have the same length');
+    }
+    return forwardAD.dualLevel((level) => {
+      const duals = pList.map((p, i) => forwardAD.makeDual(p, tList[i]!, level));
+      const outDual = fn(...duals);
+      const { primal, tangent } = forwardAD.unpackDual(outDual, level);
+      for (const d of duals) d.dispose();
+      outDual.dispose();
+      return { output: primal, jvp: tangent };
+    });
+  },
+};

@@ -31,8 +31,9 @@
     "codegen": "node scripts/codegen.mjs",
     "build:ts": "tsc -p tsconfig.json",
     "build": "npm run build:native && npm run codegen && npm run build:ts",
-    "test": "node --test dist/test/*.test.js",
+    "test": "OMP_NUM_THREADS=4 node --test --test-concurrency=4 dist/test/*.test.js",
     "test:cuda": "NORCH_TEST_CUDA=1 node --test dist/test/cuda.test.js",
+    "bench": "node scripts/bench.mjs",
     "lint:cpp": "node scripts/lint-cpp.mjs"
   },
   "dependencies": {
