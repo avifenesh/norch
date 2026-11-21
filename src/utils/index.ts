@@ -5,6 +5,8 @@ export {
   type Sampler,
   SequentialSampler,
   RandomSampler,
+  DistributedSampler,
+  type DistributedSamplerOptions,
   TensorDataset,
   DataLoader,
   defaultCollate,

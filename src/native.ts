@@ -72,6 +72,36 @@ export interface NativeJitModule {
   isDisposed(): boolean;
 }
 
+export interface NativeProcessGroupOptions {
+  backend?: string;
+  storeType?: 'tcp' | 'file';
+  rank: number;
+  worldSize: number;
+  masterAddr?: string;
+  masterPort?: number;
+  filePath?: string;
+  timeoutMs?: number;
+  groupName?: string;
+}
+
+export interface NativeProcessGroup {
+  rank(): number;
+  worldSize(): number;
+  backendName(): string;
+  allReduce(tensor: NativeTensor, op?: string | number): void;
+  broadcast(tensor: NativeTensor, rootRank?: number): void;
+  allGather(outputTensors: NativeTensor[], inputTensor: NativeTensor): void;
+  allGatherIntoTensor(outputTensor: NativeTensor, inputTensor: NativeTensor): void;
+  reduceScatter(outputTensor: NativeTensor, inputTensors: NativeTensor[], op?: string | number): void;
+  barrier(): void;
+  send(tensor: NativeTensor, dstRank: number, tag?: number): void;
+  recv(tensor: NativeTensor, srcRank: number, tag?: number): void;
+  storeSet(key: string, value: string): void;
+  storeGet(key: string): string;
+  destroy(): void;
+  isDestroyed(): boolean;
+}
+
 export interface NativeTensorOptions {
   dtype?: DType;
   device?: string;
@@ -117,6 +147,18 @@ export interface NativeTensor {
   isCuda(): boolean;
   isPinned(): boolean;
   pinMemory(): NativeTensor;
+  isComplex(): boolean;
+  isSparse(): boolean;
+  real(): NativeTensor;
+  imag(): NativeTensor;
+  conj(): NativeTensor;
+  toDense(): NativeTensor;
+  coalesce(): NativeTensor;
+  sparseIndices(): NativeTensor;
+  sparseValues(): NativeTensor;
+  sparseDim(): number;
+  denseDim(): number;
+  nnz(): number;
   requiresGrad(): boolean;
   setRequiresGrad(req?: boolean): NativeTensor;
   isLeaf(): boolean;
@@ -492,11 +534,19 @@ export interface NativeFastOps {
     gradScale?: NativeTensor | null,
     foundInf?: NativeTensor | null
   ): void;
+  complex(real: NativeTensor, imag: NativeTensor): NativeTensor;
+  polar(abs: NativeTensor, angle: NativeTensor): NativeTensor;
+  angle(input: NativeTensor): NativeTensor;
+  viewAsReal(input: NativeTensor): NativeTensor;
+  viewAsComplex(input: NativeTensor): NativeTensor;
+  sparseCooTensor(indices: NativeTensor, values: NativeTensor, size?: number[] | null): NativeTensor;
+  sparseMm(mat1: NativeTensor, mat2: NativeTensor): NativeTensor;
 }
 
 export interface NativeAddon {
   NativeTensor: new () => NativeTensor;
   NativeGenerator: new (device?: string) => NativeGenerator;
+  NativeProcessGroup: new (opts: NativeProcessGroupOptions) => NativeProcessGroup;
   NativeCudaStream?: new (device?: number, priority?: number) => NativeCudaStream;
   NativeCudaEvent?: new (
     enableTiming?: boolean,
@@ -575,6 +625,8 @@ export interface NativeAddon {
   cudaSetStream(stream: NativeCudaStream): void;
   cudaGraphPoolHandle(): [bigint, bigint];
   mpsIsAvailable(): boolean;
+  distIsNcclAvailable(): boolean;
+  distIsGlooAvailable(): boolean;
   manualSeed(seed: number | bigint): void;
   getNumThreads(): number;
   setNumThreads(n: number): void;
@@ -587,10 +639,13 @@ const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function resolveAddonPath(): string {
+  const prebuildRel = path.join('prebuilds', `${process.platform}-${process.arch}`, 'norch_native.node');
   const candidates = [
     process.env.NORCH_NATIVE_PATH,
     path.resolve(__dirname, '..', 'build', 'norch_native.node'),
     path.resolve(__dirname, '..', '..', 'build', 'norch_native.node'),
+    path.resolve(__dirname, '..', prebuildRel),
+    path.resolve(__dirname, '..', '..', prebuildRel),
   ].filter((p): p is string => Boolean(p));
 
   for (const p of candidates) {

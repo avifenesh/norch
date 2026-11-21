@@ -19,3 +19,9 @@ export * from './sparse.js';
 export * from './dropout.js';
 export * from './attention.js';
 export * from './loss.js';
+export {
+  DistributedDataParallel,
+  type DistributedDataParallelOptions,
+} from './ddp.js';
+import { DistributedDataParallel } from './ddp.js';
+export const parallel = { DistributedDataParallel };

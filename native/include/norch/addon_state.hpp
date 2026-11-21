@@ -42,6 +42,7 @@ class AddonState {
   Napi::FunctionReference cuda_graph_ctor;
   Napi::FunctionReference aoti_model_ctor;
   Napi::FunctionReference jit_module_ctor;
+  Napi::FunctionReference process_group_ctor;
 
   std::unordered_map<const c10::StorageImpl*, StorageMemRecord> tracked_storages;
   std::int64_t total_reported_bytes = 0;

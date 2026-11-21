@@ -68,6 +68,10 @@ namespace {
     case c10::ScalarType::Half:
     case c10::ScalarType::BFloat16:
       return to_val(env, Napi::Uint16Array::New(env, numel, ab, 0));
+    case c10::ScalarType::ComplexFloat:
+      return to_val(env, Napi::Float32Array::New(env, numel * 2, ab, 0));
+    case c10::ScalarType::ComplexDouble:
+      return to_val(env, Napi::Float64Array::New(env, numel * 2, ab, 0));
     default:
       return to_val(env, Napi::Uint8Array::New(env, ab.ByteLength(), ab, 0));
   }
@@ -133,6 +137,10 @@ Napi::Value FromTypedArray(const Napi::CallbackInfo& info) {
     const bool raw_reinterpret =
         (ta.TypedArrayType() == napi_uint16_array &&
          (target_dtype == c10::ScalarType::Half || target_dtype == c10::ScalarType::BFloat16)) ||
+        (ta.TypedArrayType() == napi_float32_array &&
+         target_dtype == c10::ScalarType::ComplexFloat) ||
+        (ta.TypedArrayType() == napi_float64_array &&
+         target_dtype == c10::ScalarType::ComplexDouble) ||
         (ta.TypedArrayType() == napi_uint8_array &&
          (target_dtype == c10::ScalarType::Bool || target_dtype == c10::ScalarType::Byte)) ||
         (ta.TypedArrayType() == napi_uint8_array &&
@@ -209,6 +217,18 @@ Napi::Function TensorWrap::Init(Napi::Env env, Napi::Object exports) {
           InstanceMethod("isCuda", &TensorWrap::IsCuda),
           InstanceMethod("isPinned", &TensorWrap::IsPinned),
           InstanceMethod("pinMemory", &TensorWrap::PinMemory),
+          InstanceMethod("isComplex", &TensorWrap::IsComplex),
+          InstanceMethod("isSparse", &TensorWrap::IsSparse),
+          InstanceMethod("real", &TensorWrap::Real),
+          InstanceMethod("imag", &TensorWrap::Imag),
+          InstanceMethod("conj", &TensorWrap::Conj),
+          InstanceMethod("toDense", &TensorWrap::ToDense),
+          InstanceMethod("coalesce", &TensorWrap::Coalesce),
+          InstanceMethod("sparseIndices", &TensorWrap::SparseIndices),
+          InstanceMethod("sparseValues", &TensorWrap::SparseValues),
+          InstanceMethod("sparseDim", &TensorWrap::SparseDim),
+          InstanceMethod("denseDim", &TensorWrap::DenseDim),
+          InstanceMethod("nnz", &TensorWrap::Nnz),
           InstanceMethod("requiresGrad", &TensorWrap::RequiresGrad),
           InstanceMethod("setRequiresGrad", &TensorWrap::SetRequiresGrad),
           InstanceMethod("isLeaf", &TensorWrap::IsLeaf),
@@ -473,6 +493,78 @@ Napi::Value TensorWrap::PinMemory(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
     return NewInstance(env, tensor().pin_memory());
+  });
+}
+
+Napi::Value TensorWrap::IsComplex(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return Napi::Boolean::New(info.Env(), tensor().is_complex());
+  });
+}
+
+Napi::Value TensorWrap::IsSparse(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return Napi::Boolean::New(info.Env(), tensor().is_sparse());
+  });
+}
+
+Napi::Value TensorWrap::Real(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), at::real(tensor()));
+  });
+}
+
+Napi::Value TensorWrap::Imag(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), at::imag(tensor()));
+  });
+}
+
+Napi::Value TensorWrap::Conj(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), at::conj(tensor()).resolve_conj());
+  });
+}
+
+Napi::Value TensorWrap::ToDense(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor().to_dense());
+  });
+}
+
+Napi::Value TensorWrap::Coalesce(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor().coalesce());
+  });
+}
+
+Napi::Value TensorWrap::SparseIndices(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor()._indices());
+  });
+}
+
+Napi::Value TensorWrap::SparseValues(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor()._values());
+  });
+}
+
+Napi::Value TensorWrap::SparseDim(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return Napi::Number::New(info.Env(), static_cast<double>(tensor().sparse_dim()));
+  });
+}
+
+Napi::Value TensorWrap::DenseDim(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return Napi::Number::New(info.Env(), static_cast<double>(tensor().dense_dim()));
+  });
+}
+
+Napi::Value TensorWrap::Nnz(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return Napi::Number::New(info.Env(), static_cast<double>(tensor()._nnz()));
   });
 }
 
@@ -882,8 +974,87 @@ Napi::Value TensorWrap::IndexGet(const Napi::CallbackInfo& info) {
     if (info.Length() < 1) {
       throw Napi::TypeError::New(env, "indexGet(indices) expects an Array of indices");
     }
-    const auto indices = ParseTensorIndices(env, info[0]);
-    return NewInstance(env, tensor().index(indices));
+    auto indices = ParseTensorIndices(env, info[0]);
+
+    // Check if any slice has a negative step (libtorch's at::indexing::Slice requires step > 0)
+    bool has_neg_step = false;
+    for (const auto& idx : indices) {
+      if (idx.is_slice() && idx.slice().step().expect_int() < 0) {
+        has_neg_step = true;
+        break;
+      }
+    }
+    if (!has_neg_step) {
+      return NewInstance(env, tensor().index(indices));
+    }
+
+    // Rewrite negative-step slices into positive-step slices on flipped dimensions
+    at::Tensor cur = tensor();
+    const auto ndim = cur.dim();
+    std::int64_t specified_dims = 0;
+    for (const auto& idx : indices) {
+      if (!idx.is_none() && !idx.is_ellipsis()) {
+        specified_dims += 1;
+      }
+    }
+
+    std::int64_t dim = 0;
+    std::vector<std::int64_t> flip_dims;
+    std::vector<at::indexing::TensorIndex> rewritten;
+    rewritten.reserve(indices.size());
+
+    for (const auto& idx : indices) {
+      if (idx.is_none()) {
+        rewritten.push_back(idx);
+        continue;
+      }
+      if (idx.is_ellipsis()) {
+        const auto skipped = ndim - specified_dims;
+        dim += skipped;
+        rewritten.push_back(idx);
+        continue;
+      }
+      if (idx.is_slice() && idx.slice().step().expect_int() < 0) {
+        const auto dim_size = cur.size(dim);
+        const auto neg_step = idx.slice().step().expect_int();
+        const auto pos_step = -neg_step;
+        const auto raw_start = idx.slice().start().expect_int();
+        const auto raw_stop = idx.slice().stop().expect_int();
+
+        // Normalize Python negative-step slice [start, stop, step] on length dim_size
+        std::int64_t start =
+            (raw_start == at::indexing::INDEX_MAX)
+                ? (dim_size - 1)
+                : (raw_start < 0 ? raw_start + dim_size : raw_start);
+        std::int64_t stop =
+            (raw_stop == at::indexing::INDEX_MIN)
+                ? -1
+                : (raw_stop < 0 ? raw_stop + dim_size : raw_stop);
+        if (start >= dim_size) start = dim_size - 1;
+        if (start < -1) start = -1;
+        if (stop >= dim_size) stop = dim_size - 1;
+        if (stop < -1) stop = -1;
+
+        // On flipped dimension, index i maps to (dim_size - 1 - i)
+        flip_dims.push_back(dim);
+        if (start <= stop) {
+          rewritten.emplace_back(at::indexing::Slice(0, 0, 1));
+        } else {
+          const auto flipped_start = dim_size - 1 - start;
+          const auto flipped_stop = dim_size - 1 - stop;
+          rewritten.emplace_back(at::indexing::Slice(flipped_start, flipped_stop, pos_step));
+        }
+        dim += 1;
+      } else {
+        rewritten.push_back(idx);
+        dim += 1;
+      }
+    }
+
+    if (!flip_dims.empty()) {
+      cur = at::flip(cur, flip_dims);
+    }
+    return NewInstance(env, cur.index(rewritten));
   });
 }
 

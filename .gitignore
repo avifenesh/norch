@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+prebuilds/
 compile_commands.json
 *.node
 .DS_Store

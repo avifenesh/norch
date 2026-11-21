@@ -52,6 +52,18 @@ class TensorWrap : public Napi::ObjectWrap<TensorWrap> {
   Napi::Value IsCuda(const Napi::CallbackInfo& info);
   Napi::Value IsPinned(const Napi::CallbackInfo& info);
   Napi::Value PinMemory(const Napi::CallbackInfo& info);
+  Napi::Value IsComplex(const Napi::CallbackInfo& info);
+  Napi::Value IsSparse(const Napi::CallbackInfo& info);
+  Napi::Value Real(const Napi::CallbackInfo& info);
+  Napi::Value Imag(const Napi::CallbackInfo& info);
+  Napi::Value Conj(const Napi::CallbackInfo& info);
+  Napi::Value ToDense(const Napi::CallbackInfo& info);
+  Napi::Value Coalesce(const Napi::CallbackInfo& info);
+  Napi::Value SparseIndices(const Napi::CallbackInfo& info);
+  Napi::Value SparseValues(const Napi::CallbackInfo& info);
+  Napi::Value SparseDim(const Napi::CallbackInfo& info);
+  Napi::Value DenseDim(const Napi::CallbackInfo& info);
+  Napi::Value Nnz(const Napi::CallbackInfo& info);
   Napi::Value RequiresGrad(const Napi::CallbackInfo& info);
   Napi::Value SetRequiresGrad(const Napi::CallbackInfo& info);
   Napi::Value IsLeaf(const Napi::CallbackInfo& info);

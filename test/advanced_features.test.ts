@@ -16,6 +16,14 @@ import torch, {
 
 torch.setNumThreads(4);
 
+function pythonSubprocessEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env.LD_PRELOAD;
+  delete env.ASAN_OPTIONS;
+  delete env.UBSAN_OPTIONS;
+  return env;
+}
+
 function findPythonTorch(): string | null {
   const candidates = [
     process.env.NORCH_PYTHON,
@@ -25,7 +33,11 @@ function findPythonTorch(): string | null {
   for (const py of candidates) {
     if (py.includes(path.sep) && !fs.existsSync(py)) continue;
     try {
-      execFileSync(py, ['-c', 'import torch'], { stdio: 'ignore', timeout: 15000 });
+      execFileSync(py, ['-c', 'import torch'], {
+        stdio: 'ignore',
+        timeout: 15000,
+        env: pythonSubprocessEnv(),
+      });
       return py;
     } catch {
       // ignore
@@ -418,7 +430,13 @@ print(json.dumps({"ref_out": ref_out, "aoti_ok": aoti_ok}))
 `;
 
     try {
-      const info = JSON.parse(execFileSync(py, ['-c', pyExport], { encoding: 'utf8', timeout: 60000 })) as {
+      const info = JSON.parse(
+        execFileSync(py, ['-c', pyExport], {
+          encoding: 'utf8',
+          timeout: 60000,
+          env: pythonSubprocessEnv(),
+        })
+      ) as {
         ref_out: number[];
         aoti_ok: boolean;
       };

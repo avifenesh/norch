@@ -5,6 +5,9 @@
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
+  "bin": {
+    "norch-setup": "./bin/norch-setup.mjs"
+  },
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
@@ -21,6 +24,18 @@
     "./utils": {
       "types": "./dist/src/utils/index.d.ts",
       "import": "./dist/src/utils/index.js"
+    },
+    "./distributed": {
+      "types": "./dist/src/distributed.d.ts",
+      "import": "./dist/src/distributed.js"
+    },
+    "./special": {
+      "types": "./dist/src/special.d.ts",
+      "import": "./dist/src/special.js"
+    },
+    "./distributions": {
+      "types": "./dist/src/distributions.d.ts",
+      "import": "./dist/src/distributions.js"
     }
   },
   "engines": {
@@ -31,10 +46,13 @@
     "codegen": "node scripts/codegen.mjs",
     "build:ts": "tsc -p tsconfig.json",
     "build": "npm run build:native && npm run codegen && npm run build:ts",
-    "test": "OMP_NUM_THREADS=4 node --test --test-concurrency=4 dist/test/*.test.js",
+    "test": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 node --test --test-concurrency=4 dist/test/*.test.js",
     "test:cuda": "NORCH_TEST_CUDA=1 node --test dist/test/cuda.test.js",
+    "test:asan": "node scripts/test-asan.mjs",
     "bench": "node scripts/bench.mjs",
-    "lint:cpp": "node scripts/lint-cpp.mjs"
+    "lint:cpp": "node scripts/lint-cpp.mjs",
+    "setup:libtorch": "node scripts/download-libtorch.mjs",
+    "prebuild": "node scripts/prebuild.mjs"
   },
   "dependencies": {
     "node-addon-api": "^8.5.0"

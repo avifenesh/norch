@@ -151,6 +151,58 @@ export class Tensor implements Disposable {
     return wrapTensor(this._native.pinMemory());
   }
 
+  get isComplex(): boolean {
+    return this._native.isComplex();
+  }
+
+  get isSparse(): boolean {
+    return this._native.isSparse();
+  }
+
+  get real(): Tensor {
+    return wrapTensor(this._native.real());
+  }
+
+  get imag(): Tensor {
+    return wrapTensor(this._native.imag());
+  }
+
+  conj(): Tensor {
+    return wrapTensor(this._native.conj());
+  }
+
+  angle(): Tensor {
+    return wrapTensor(native.fast.angle(this._native));
+  }
+
+  toDense(): Tensor {
+    return wrapTensor(this._native.toDense());
+  }
+
+  coalesce(): Tensor {
+    return wrapTensor(this._native.coalesce());
+  }
+
+  indices(): Tensor {
+    return wrapTensor(this._native.sparseIndices());
+  }
+
+  values(): Tensor {
+    return wrapTensor(this._native.sparseValues());
+  }
+
+  get sparseDim(): number {
+    return this._native.sparseDim();
+  }
+
+  get denseDim(): number {
+    return this._native.denseDim();
+  }
+
+  get nnz(): number {
+    return this._native.nnz();
+  }
+
   get requiresGrad(): boolean {
     return this._native.requiresGrad();
   }
@@ -240,14 +292,21 @@ export class Tensor implements Disposable {
     }
     const ta = this.toTypedArray();
     const isBool = this.dtype === 'bool';
+    const isComplex = this.isComplex;
     let offset = 0;
     const build = (depth: number): unknown => {
       const len = shape[depth]!;
       if (depth === shape.length - 1) {
         const out = new Array<unknown>(len);
         for (let i = 0; i < len; i++) {
-          const raw = ta[offset++];
-          out[i] = isBool ? Boolean(raw) : typeof raw === 'bigint' ? Number(raw) : raw;
+          if (isComplex) {
+            const re = Number(ta[offset++]);
+            const im = Number(ta[offset++]);
+            out[i] = { real: re, imag: im };
+          } else {
+            const raw = ta[offset++];
+            out[i] = isBool ? Boolean(raw) : typeof raw === 'bigint' ? Number(raw) : raw;
+          }
         }
         return out;
       }

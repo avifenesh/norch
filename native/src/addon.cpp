@@ -7,6 +7,7 @@
 #include "norch/autograd.hpp"
 #include "norch/cuda.hpp"
 #include "norch/dispatcher.hpp"
+#include "norch/distributed.hpp"
 #include "norch/export_runner.hpp"
 #include "norch/generator_wrap.hpp"
 #include "norch/ops_fast.hpp"
@@ -25,6 +26,7 @@ Napi::Object InitAddon(Napi::Env env, Napi::Object exports) {
   norch::RegisterAutograd(env, exports);
   norch::RegisterFastOps(env, exports);
   norch::RegisterCudaAndRuntime(env, exports);
+  norch::RegisterDistributed(env, exports);
   norch::RegisterExportRunners(env, exports);
   return exports;
 }

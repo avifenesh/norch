@@ -1568,6 +1568,64 @@ Napi::Value FusedAdamStepOp(const Napi::CallbackInfo& info) {
   });
 }
 
+Napi::Value ComplexOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return TensorWrap::NewInstance(
+        env, at::complex(TensorWrap::UnwrapTensor(env, info[0]), TensorWrap::UnwrapTensor(env, info[1])));
+  });
+}
+
+Napi::Value PolarOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return TensorWrap::NewInstance(
+        env, at::polar(TensorWrap::UnwrapTensor(env, info[0]), TensorWrap::UnwrapTensor(env, info[1])));
+  });
+}
+
+Napi::Value AngleOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return TensorWrap::NewInstance(env, at::angle(TensorWrap::UnwrapTensor(env, info[0])));
+  });
+}
+
+Napi::Value ViewAsRealOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return TensorWrap::NewInstance(env, at::view_as_real(TensorWrap::UnwrapTensor(env, info[0])));
+  });
+}
+
+Napi::Value ViewAsComplexOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return TensorWrap::NewInstance(env, at::view_as_complex(TensorWrap::UnwrapTensor(env, info[0])));
+  });
+}
+
+Napi::Value SparseCooTensorOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& indices = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& values = TensorWrap::UnwrapTensor(env, info[1]);
+    if (info.Length() >= 3 && !info[2].IsUndefined() && !info[2].IsNull()) {
+      const auto size = ParseIntArray(env, info[2]);
+      return TensorWrap::NewInstance(env, at::sparse_coo_tensor(indices, values, size));
+    }
+    return TensorWrap::NewInstance(env, at::sparse_coo_tensor(indices, values));
+  });
+}
+
+Napi::Value SparseMmOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return TensorWrap::NewInstance(
+        env, at::mm(TensorWrap::UnwrapTensor(env, info[0]), TensorWrap::UnwrapTensor(env, info[1])));
+  });
+}
+
 }  // namespace
 
 void RegisterFastOps(Napi::Env env, Napi::Object exports) {
@@ -1695,6 +1753,13 @@ void RegisterFastOps(Napi::Env env, Napi::Object exports) {
   ops.Set("gru", Napi::Function::New(env, GruOp));
   ops.Set("rnn", Napi::Function::New(env, RnnOp));
   ops.Set("fusedAdamStep", Napi::Function::New(env, FusedAdamStepOp));
+  ops.Set("complex", Napi::Function::New(env, ComplexOp));
+  ops.Set("polar", Napi::Function::New(env, PolarOp));
+  ops.Set("angle", Napi::Function::New(env, AngleOp));
+  ops.Set("viewAsReal", Napi::Function::New(env, ViewAsRealOp));
+  ops.Set("viewAsComplex", Napi::Function::New(env, ViewAsComplexOp));
+  ops.Set("sparseCooTensor", Napi::Function::New(env, SparseCooTensorOp));
+  ops.Set("sparseMm", Napi::Function::New(env, SparseMmOp));
 
   exports.Set("fast", ops);
 }

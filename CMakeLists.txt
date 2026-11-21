@@ -41,8 +41,11 @@ find_library(C10_CUDA_LIB c10_cuda PATHS "${TORCH_LIB_DIR}" NO_DEFAULT_PATH)
 find_library(TORCH_GLOBAL_DEPS_LIB torch_global_deps PATHS "${TORCH_LIB_DIR}" NO_DEFAULT_PATH)
 
 set(NORCH_HAS_CUDA OFF)
+set(NORCH_HAS_NCCL OFF)
 set(NORCH_CUDA_INCLUDE_DIR "")
+set(NORCH_NCCL_INCLUDE_DIR "")
 set(NORCH_CUDART_LIB "")
+set(NORCH_NCCL_LIB "")
 set(NORCH_EXTRA_RPATHS "")
 
 if(TORCH_CUDA_LIB AND C10_CUDA_LIB)
@@ -63,7 +66,21 @@ if(TORCH_CUDA_LIB AND C10_CUDA_LIB)
       get_filename_component(CUDART_DIR "${CUDART_LIB}" DIRECTORY)
       list(APPEND NORCH_EXTRA_RPATHS "${CUDART_DIR}")
     endif()
-    message(STATUS "norch: CUDA libtorch detected (${TORCH_CUDA_LIB}, headers=${NORCH_CUDA_INCLUDE_DIR}, cudart=${NORCH_CUDART_LIB})")
+    # Check NCCL headers for c10d::ProcessGroupNCCL
+    file(GLOB NVIDIA_NCCL_INC_HINTS "${LIBTORCH_DIR}/../nvidia/nccl/include")
+    find_path(NCCL_INCLUDE_DIR nccl.h HINTS ${NVIDIA_NCCL_INC_HINTS} /usr/local/cuda/include /usr/include)
+    file(GLOB NVIDIA_NCCL_LIB_HINTS "${LIBTORCH_DIR}/../nvidia/nccl/lib")
+    find_library(NCCL_LIB NAMES nccl libnccl.so.2 HINTS ${NVIDIA_NCCL_LIB_HINTS} /usr/lib/x86_64-linux-gnu)
+    if(NCCL_INCLUDE_DIR)
+      set(NORCH_HAS_NCCL ON)
+      set(NORCH_NCCL_INCLUDE_DIR "${NCCL_INCLUDE_DIR}")
+      if(NCCL_LIB)
+        set(NORCH_NCCL_LIB "${NCCL_LIB}")
+        get_filename_component(NCCL_DIR "${NCCL_LIB}" DIRECTORY)
+        list(APPEND NORCH_EXTRA_RPATHS "${NCCL_DIR}")
+      endif()
+    endif()
+    message(STATUS "norch: CUDA libtorch detected (nccl=${NORCH_HAS_NCCL}, headers=${NORCH_CUDA_INCLUDE_DIR})")
   else()
     message(STATUS "norch: libtorch_cuda found but cuda_runtime_api.h missing; building without CUDA runtime headers")
   endif()
@@ -81,6 +98,7 @@ set(NORCH_SOURCES
   native/src/autograd.cpp
   native/src/ops_fast.cpp
   native/src/cuda.cpp
+  native/src/distributed.cpp
   native/src/export_runner.cpp
 )
 
@@ -107,6 +125,7 @@ target_include_directories(norch_native SYSTEM PRIVATE
   "${NODE_ADDON_API_DIR}"
   ${TORCH_INCLUDE_DIRS}
   $<$<BOOL:${NORCH_HAS_CUDA}>:${NORCH_CUDA_INCLUDE_DIR}>
+  $<$<BOOL:${NORCH_HAS_NCCL}>:${NORCH_NCCL_INCLUDE_DIR}>
 )
 
 target_compile_definitions(norch_native PRIVATE
@@ -115,6 +134,8 @@ target_compile_definitions(norch_native PRIVATE
   BUILDING_NODE_EXTENSION
   _GLIBCXX_ASSERTIONS
   $<$<BOOL:${NORCH_HAS_CUDA}>:NORCH_HAS_CUDA=1>
+  $<$<BOOL:${NORCH_HAS_NCCL}>:NORCH_HAS_NCCL=1>
+  $<$<BOOL:${NORCH_HAS_NCCL}>:USE_C10D_NCCL=1>
 )
 
 target_compile_options(norch_native PRIVATE
@@ -162,6 +183,9 @@ else()
     list(APPEND NORCH_TORCH_LINK_LIBS "${TORCH_CUDA_LIB}" "${C10_CUDA_LIB}")
     if(NORCH_CUDART_LIB)
       list(APPEND NORCH_TORCH_LINK_LIBS "${NORCH_CUDART_LIB}")
+    endif()
+    if(NORCH_HAS_NCCL AND NORCH_NCCL_LIB)
+      list(APPEND NORCH_TORCH_LINK_LIBS "${NORCH_NCCL_LIB}")
     endif()
   endif()
   if(TORCH_GLOBAL_DEPS_LIB)

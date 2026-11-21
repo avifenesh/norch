@@ -283,6 +283,38 @@ export function allclose(a: Tensor, b: Tensor, rtol = 1e-5, atol = 1e-8, equalNa
   return a.allclose(b, rtol, atol, equalNan);
 }
 
+// ---------- Complex & Sparse ----------
+
+export function complex(real: Tensor, imag: Tensor): Tensor {
+  return wrapTensor(native.fast.complex(real._native, imag._native));
+}
+
+export function polar(abs: Tensor, angleTensor: Tensor): Tensor {
+  return wrapTensor(native.fast.polar(abs._native, angleTensor._native));
+}
+
+export function angle(input: Tensor): Tensor {
+  return wrapTensor(native.fast.angle(input._native));
+}
+
+export function viewAsReal(input: Tensor): Tensor {
+  return wrapTensor(native.fast.viewAsReal(input._native));
+}
+
+export function viewAsComplex(input: Tensor): Tensor {
+  return wrapTensor(native.fast.viewAsComplex(input._native));
+}
+
+export function sparseCooTensor(indices: Tensor, values: Tensor, size?: number[]): Tensor {
+  return wrapTensor(native.fast.sparseCooTensor(indices._native, values._native, size ?? null));
+}
+
+export const sparse = {
+  mm(mat1: Tensor, mat2: Tensor): Tensor {
+    return wrapTensor(native.fast.sparseMm(mat1._native, mat2._native));
+  },
+};
+
 // ---------- Generic c10::Dispatcher access ----------
 
 export function callOp(

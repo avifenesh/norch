@@ -6,6 +6,14 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import torch, { F, optim } from '../src/index.js';
 
+function pythonSubprocessEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env.LD_PRELOAD;
+  delete env.ASAN_OPTIONS;
+  delete env.UBSAN_OPTIONS;
+  return env;
+}
+
 function findPythonTorch(): string | null {
   const candidates = [
     process.env.NORCH_PYTHON,
@@ -16,7 +24,11 @@ function findPythonTorch(): string | null {
   for (const py of candidates) {
     if (py.includes(path.sep) && !fs.existsSync(py)) continue;
     try {
-      execFileSync(py, ['-c', 'import torch'], { stdio: 'ignore', timeout: 5000 });
+      execFileSync(py, ['-c', 'import torch'], {
+        stdio: 'ignore',
+        timeout: 5000,
+        env: pythonSubprocessEnv(),
+      });
       return py;
     } catch {
       // ignore
@@ -108,7 +120,9 @@ print(json.dumps({
 }))
 `;
 
-    const ref = JSON.parse(execFileSync(py, ['-c', pyScript], { encoding: 'utf8' })) as {
+    const ref = JSON.parse(
+      execFileSync(py, ['-c', pyScript], { encoding: 'utf8', env: pythonSubprocessEnv() })
+    ) as {
       loss: number;
       x_grad: number[];
       w_grad: number[];

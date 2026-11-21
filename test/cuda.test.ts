@@ -108,5 +108,8 @@ describe('CUDA backend (guarded by NORCH_TEST_CUDA=1)', { skip: !runCuda }, () =
       assert.equal(gpuX.isCuda, true);
       bx!.dispose();
     }
+
+    // NCCL availability check (compiled with libnccl + ProcessGroupNCCL)
+    assert.equal(typeof torch.distributed.isNcclAvailable(), 'boolean');
   });
 });

@@ -8,6 +8,9 @@ import * as autogradMod from './autograd.js';
 import * as cudaMod from './cuda.js';
 import * as linalgMod from './linalg.js';
 import * as fftMod from './fft.js';
+import * as specialMod from './special.js';
+import * as distributionsMod from './distributions.js';
+import * as distributedMod from './distributed.js';
 import * as exportMod from './export.js';
 import * as nn from './nn/index.js';
 import * as optim from './optim/index.js';
@@ -24,6 +27,9 @@ export * from './autograd.js';
 export * from './cuda.js';
 export * from './linalg.js';
 export * from './fft.js';
+export * from './special.js';
+export * from './distributions.js';
+export * from './distributed.js';
 export * from './export.js';
 export { nn, optim, utils, amp };
 export { functional as F } from './functional.js';
@@ -123,9 +129,19 @@ export const torch = {
   relu: opsMod.relu,
   abs: opsMod.abs,
   allclose: opsMod.allclose,
+  complex: opsMod.complex,
+  polar: opsMod.polar,
+  angle: opsMod.angle,
+  viewAsReal: opsMod.viewAsReal,
+  viewAsComplex: opsMod.viewAsComplex,
+  sparseCooTensor: opsMod.sparseCooTensor,
+  sparse: opsMod.sparse,
   ops: opsMod.ops,
   linalg: linalgMod.linalg,
   fft: fftMod.fft,
+  special: specialMod.special,
+  distributions: distributionsMod.distributions,
+  distributed: distributedMod.distributed,
 
   // Autograd
   isGradEnabled: autogradMod.isGradEnabled,
