@@ -23,7 +23,7 @@ export class Sequential extends Module {
   forward(input: Tensor): Tensor {
     let x = input;
     for (const layer of this.layers) {
-      x = layer.forward(x) as Tensor;
+      x = layer.call(x) as Tensor;
     }
     return x;
   }

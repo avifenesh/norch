@@ -462,3 +462,274 @@ export class Upsample extends Module {
     return F.interpolate(input, this.opts);
   }
 }
+
+export interface ConvTranspose3dLayerOptions extends TensorOptions {
+  stride?: number | [number, number, number];
+  padding?: number | [number, number, number];
+  outputPadding?: number | [number, number, number];
+  groups?: number;
+  dilation?: number | [number, number, number];
+  bias?: boolean;
+}
+
+export class ConvTranspose3d extends Module {
+  readonly inChannels: number;
+  readonly outChannels: number;
+  readonly kernelSize: [number, number, number];
+  readonly stride: [number, number, number];
+  readonly padding: [number, number, number];
+  readonly outputPadding: [number, number, number];
+  readonly groups: number;
+  readonly dilation: [number, number, number];
+  readonly weight: Parameter;
+  readonly bias: Parameter | null;
+
+  constructor(
+    inChannels: number,
+    outChannels: number,
+    kernelSize: number | [number, number, number],
+    opts?: ConvTranspose3dLayerOptions
+  ) {
+    super();
+    this.inChannels = inChannels;
+    this.outChannels = outChannels;
+    this.kernelSize = triple(kernelSize);
+    this.stride = triple(opts?.stride ?? 1);
+    this.padding = triple(opts?.padding ?? 0);
+    this.outputPadding = triple(opts?.outputPadding ?? 0);
+    this.groups = opts?.groups ?? 1;
+    this.dilation = triple(opts?.dilation ?? 1);
+    const useBias = opts?.bias ?? true;
+    const factoryOpts: TensorOptions = { dtype: opts?.dtype, device: opts?.device };
+
+    const wInit = empty(
+      [
+        inChannels,
+        outChannels / this.groups,
+        this.kernelSize[0],
+        this.kernelSize[1],
+        this.kernelSize[2],
+      ],
+      factoryOpts
+    );
+    this.weight = new Parameter(wInit, true);
+    wInit.dispose();
+
+    if (useBias) {
+      const bInit = empty([outChannels], factoryOpts);
+      this.bias = new Parameter(bInit, true);
+      bInit.dispose();
+    } else {
+      this.bias = null;
+    }
+
+    kaimingUniform_(this.weight, Math.sqrt(5));
+    if (this.bias) {
+      const [fanIn] = calculateFanInAndFanOut(this.weight);
+      const bound = fanIn > 0 ? 1 / Math.sqrt(fanIn) : 0;
+      uniform_(this.bias, -bound, bound);
+    }
+  }
+
+  forward(input: Tensor): Tensor {
+    return F.convTranspose3d(input, this.weight, {
+      bias: this.bias,
+      stride: this.stride,
+      padding: this.padding,
+      outputPadding: this.outputPadding,
+      groups: this.groups,
+      dilation: this.dilation,
+    });
+  }
+}
+
+export class MaxPool1d extends Module {
+  readonly kernelSize: number;
+  readonly stride?: number;
+  readonly padding: number;
+  readonly dilation: number;
+  readonly ceilMode: boolean;
+
+  constructor(
+    kernelSize: number,
+    opts?: { stride?: number; padding?: number; dilation?: number; ceilMode?: boolean }
+  ) {
+    super();
+    this.kernelSize = kernelSize;
+    this.stride = opts?.stride;
+    this.padding = opts?.padding ?? 0;
+    this.dilation = opts?.dilation ?? 1;
+    this.ceilMode = opts?.ceilMode ?? false;
+  }
+
+  forward(input: Tensor): Tensor {
+    return F.maxPool1d(input, this.kernelSize, {
+      stride: this.stride,
+      padding: this.padding,
+      dilation: this.dilation,
+      ceilMode: this.ceilMode,
+    });
+  }
+}
+
+export class MaxPool3d extends Module {
+  readonly kernelSize: [number, number, number];
+  readonly stride?: [number, number, number];
+  readonly padding: [number, number, number];
+  readonly dilation: [number, number, number];
+  readonly ceilMode: boolean;
+
+  constructor(
+    kernelSize: number | [number, number, number],
+    opts?: {
+      stride?: number | [number, number, number];
+      padding?: number | [number, number, number];
+      dilation?: number | [number, number, number];
+      ceilMode?: boolean;
+    }
+  ) {
+    super();
+    this.kernelSize = triple(kernelSize);
+    this.stride = opts?.stride !== undefined ? triple(opts.stride) : undefined;
+    this.padding = triple(opts?.padding ?? 0);
+    this.dilation = triple(opts?.dilation ?? 1);
+    this.ceilMode = opts?.ceilMode ?? false;
+  }
+
+  forward(input: Tensor): Tensor {
+    return F.maxPool3d(input, this.kernelSize, {
+      stride: this.stride,
+      padding: this.padding,
+      dilation: this.dilation,
+      ceilMode: this.ceilMode,
+    });
+  }
+}
+
+export class AvgPool1d extends Module {
+  readonly kernelSize: number;
+  readonly stride?: number;
+  readonly padding: number;
+  readonly ceilMode: boolean;
+  readonly countIncludePad: boolean;
+
+  constructor(
+    kernelSize: number,
+    opts?: { stride?: number; padding?: number; ceilMode?: boolean; countIncludePad?: boolean }
+  ) {
+    super();
+    this.kernelSize = kernelSize;
+    this.stride = opts?.stride;
+    this.padding = opts?.padding ?? 0;
+    this.ceilMode = opts?.ceilMode ?? false;
+    this.countIncludePad = opts?.countIncludePad ?? true;
+  }
+
+  forward(input: Tensor): Tensor {
+    return F.avgPool1d(input, this.kernelSize, {
+      stride: this.stride,
+      padding: this.padding,
+      ceilMode: this.ceilMode,
+      countIncludePad: this.countIncludePad,
+    });
+  }
+}
+
+export class AvgPool3d extends Module {
+  readonly kernelSize: [number, number, number];
+  readonly stride?: [number, number, number];
+  readonly padding: [number, number, number];
+  readonly ceilMode: boolean;
+  readonly countIncludePad: boolean;
+
+  constructor(
+    kernelSize: number | [number, number, number],
+    opts?: {
+      stride?: number | [number, number, number];
+      padding?: number | [number, number, number];
+      ceilMode?: boolean;
+      countIncludePad?: boolean;
+    }
+  ) {
+    super();
+    this.kernelSize = triple(kernelSize);
+    this.stride = opts?.stride !== undefined ? triple(opts.stride) : undefined;
+    this.padding = triple(opts?.padding ?? 0);
+    this.ceilMode = opts?.ceilMode ?? false;
+    this.countIncludePad = opts?.countIncludePad ?? true;
+  }
+
+  forward(input: Tensor): Tensor {
+    return F.avgPool3d(input, this.kernelSize, {
+      stride: this.stride,
+      padding: this.padding,
+      ceilMode: this.ceilMode,
+      countIncludePad: this.countIncludePad,
+    });
+  }
+}
+
+export class AdaptiveMaxPool2d extends Module {
+  readonly outputSize: [number, number];
+  constructor(outputSize: number | [number, number]) {
+    super();
+    this.outputSize = pair(outputSize);
+  }
+  forward(input: Tensor): Tensor {
+    return F.adaptiveMaxPool2d(input, this.outputSize);
+  }
+}
+
+export class PixelShuffle extends Module {
+  readonly upscaleFactor: number;
+  constructor(upscaleFactor: number) {
+    super();
+    this.upscaleFactor = upscaleFactor;
+  }
+  forward(input: Tensor): Tensor {
+    return F.pixelShuffle(input, this.upscaleFactor);
+  }
+}
+
+export class PixelUnshuffle extends Module {
+  readonly downscaleFactor: number;
+  constructor(downscaleFactor: number) {
+    super();
+    this.downscaleFactor = downscaleFactor;
+  }
+  forward(input: Tensor): Tensor {
+    return F.pixelUnshuffle(input, this.downscaleFactor);
+  }
+}
+
+export class Unfold extends Module {
+  readonly kernelSize: [number, number];
+  readonly opts?: F.UnfoldOptions;
+  constructor(kernelSize: number | [number, number], opts?: F.UnfoldOptions) {
+    super();
+    this.kernelSize = pair(kernelSize);
+    this.opts = opts;
+  }
+  forward(input: Tensor): Tensor {
+    return F.unfold(input, this.kernelSize, this.opts);
+  }
+}
+
+export class Fold extends Module {
+  readonly outputSize: [number, number];
+  readonly kernelSize: [number, number];
+  readonly opts?: F.UnfoldOptions;
+  constructor(
+    outputSize: number | [number, number],
+    kernelSize: number | [number, number],
+    opts?: F.UnfoldOptions
+  ) {
+    super();
+    this.outputSize = pair(outputSize);
+    this.kernelSize = pair(kernelSize);
+    this.opts = opts;
+  }
+  forward(input: Tensor): Tensor {
+    return F.fold(input, this.outputSize, this.kernelSize, this.opts);
+  }
+}

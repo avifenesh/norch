@@ -135,6 +135,10 @@ export class Tensor implements Disposable {
     return new Device(this._native.device());
   }
 
+  get layout(): string {
+    return this._native.layout();
+  }
+
   get isContiguous(): boolean {
     return this._native.isContiguous();
   }
@@ -179,6 +183,18 @@ export class Tensor implements Disposable {
     return wrapTensor(this._native.toDense());
   }
 
+  toSparse(): Tensor {
+    return wrapTensor(this._native.toSparseCoo());
+  }
+
+  toSparseCsr(): Tensor {
+    return wrapTensor(this._native.toSparseCsr());
+  }
+
+  toSparseCsc(): Tensor {
+    return wrapTensor(this._native.toSparseCsc());
+  }
+
   coalesce(): Tensor {
     return wrapTensor(this._native.coalesce());
   }
@@ -189,6 +205,22 @@ export class Tensor implements Disposable {
 
   values(): Tensor {
     return wrapTensor(this._native.sparseValues());
+  }
+
+  crowIndices(): Tensor {
+    return wrapTensor(this._native.crowIndices());
+  }
+
+  colIndices(): Tensor {
+    return wrapTensor(this._native.colIndices());
+  }
+
+  ccolIndices(): Tensor {
+    return wrapTensor(this._native.ccolIndices());
+  }
+
+  rowIndices(): Tensor {
+    return wrapTensor(this._native.rowIndices());
   }
 
   get sparseDim(): number {
@@ -455,9 +487,9 @@ export class Tensor implements Disposable {
     return wrapTensor(this._native.indexGet(raw));
   }
 
-  indexPut_(indices: TensorIndexItem[], value: Tensor | Scalar): this {
+  indexPut_(indices: TensorIndexItem[], value: Tensor | Scalar, accumulate = false): this {
     const raw = indices.map((idx) => (idx instanceof Tensor ? idx._native : idx));
-    this._native.indexPut(raw, value instanceof Tensor ? value._native : value);
+    this._native.indexPut(raw, value instanceof Tensor ? value._native : value, accumulate);
     return this;
   }
 

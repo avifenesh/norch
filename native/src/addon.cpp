@@ -8,9 +8,11 @@
 #include "norch/cuda.hpp"
 #include "norch/dispatcher.hpp"
 #include "norch/distributed.hpp"
+#include "norch/dlpack.hpp"
 #include "norch/export_runner.hpp"
 #include "norch/generator_wrap.hpp"
 #include "norch/ops_fast.hpp"
+#include "norch/profiler.hpp"
 #include "norch/tensor_wrap.hpp"
 
 namespace {
@@ -27,7 +29,9 @@ Napi::Object InitAddon(Napi::Env env, Napi::Object exports) {
   norch::RegisterFastOps(env, exports);
   norch::RegisterCudaAndRuntime(env, exports);
   norch::RegisterDistributed(env, exports);
+  norch::RegisterDlpack(env, exports);
   norch::RegisterExportRunners(env, exports);
+  norch::RegisterProfiler(env, exports);
   return exports;
 }
 

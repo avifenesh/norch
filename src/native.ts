@@ -72,6 +72,40 @@ export interface NativeJitModule {
   isDisposed(): boolean;
 }
 
+export interface NativeDistWork {
+  wait(timeoutMs?: number): boolean;
+  isCompleted(): boolean;
+  isSuccess(): boolean;
+}
+
+export interface NativeDlpackCapsule {
+  readonly __dlpackBrand: unique symbol;
+}
+
+export interface NativeProfilerEvent {
+  name: string;
+  overloadName: string;
+  startNs: number;
+  endNs: number;
+  durationUs: number;
+  cudaTimeUs: number;
+  deviceType: string;
+  deviceIndex: number;
+  nBytes: number;
+  flops: number;
+  threadId: number;
+  isAsync: boolean;
+  shapes?: number[][];
+}
+
+export interface NativeProfilerResult {
+  events(): NativeProfilerEvent[];
+  traceStartNs(): number;
+  saveChromeTrace(filePath: string): void;
+  dispose(): void;
+  isDisposed(): boolean;
+}
+
 export interface NativeProcessGroupOptions {
   backend?: string;
   storeType?: 'tcp' | 'file';
@@ -88,14 +122,45 @@ export interface NativeProcessGroup {
   rank(): number;
   worldSize(): number;
   backendName(): string;
-  allReduce(tensor: NativeTensor, op?: string | number): void;
-  broadcast(tensor: NativeTensor, rootRank?: number): void;
-  allGather(outputTensors: NativeTensor[], inputTensor: NativeTensor): void;
-  allGatherIntoTensor(outputTensor: NativeTensor, inputTensor: NativeTensor): void;
-  reduceScatter(outputTensor: NativeTensor, inputTensors: NativeTensor[], op?: string | number): void;
-  barrier(): void;
+  allReduce(tensor: NativeTensor, op?: string | number, asyncOp?: boolean): NativeDistWork | undefined;
+  broadcast(tensor: NativeTensor, rootRank?: number, asyncOp?: boolean): NativeDistWork | undefined;
+  allGather(
+    outputTensors: NativeTensor[],
+    inputTensor: NativeTensor,
+    asyncOp?: boolean
+  ): NativeDistWork | undefined;
+  allGatherIntoTensor(
+    outputTensor: NativeTensor,
+    inputTensor: NativeTensor,
+    asyncOp?: boolean
+  ): NativeDistWork | undefined;
+  gather(
+    inputTensor: NativeTensor,
+    gatherList?: NativeTensor[] | null,
+    dst?: number,
+    asyncOp?: boolean
+  ): NativeDistWork | undefined;
+  scatter(
+    outputTensor: NativeTensor,
+    scatterList?: NativeTensor[] | null,
+    src?: number,
+    asyncOp?: boolean
+  ): NativeDistWork | undefined;
+  allToAll(
+    outputTensors: NativeTensor[],
+    inputTensors: NativeTensor[],
+    asyncOp?: boolean
+  ): NativeDistWork | undefined;
+  reduceScatter(
+    outputTensor: NativeTensor,
+    inputTensors: NativeTensor[],
+    op?: string | number,
+    asyncOp?: boolean
+  ): NativeDistWork | undefined;
+  barrier(asyncOp?: boolean): NativeDistWork | undefined;
   send(tensor: NativeTensor, dstRank: number, tag?: number): void;
   recv(tensor: NativeTensor, srcRank: number, tag?: number): void;
+  newSubgroup(groupName: string, ranks?: number[] | null): NativeProcessGroup | null;
   storeSet(key: string, value: string): void;
   storeGet(key: string): string;
   destroy(): void;
@@ -143,6 +208,7 @@ export interface NativeTensor {
   storageOffset(): number;
   dtype(): DType;
   device(): string;
+  layout(): string;
   isContiguous(): boolean;
   isCuda(): boolean;
   isPinned(): boolean;
@@ -153,9 +219,16 @@ export interface NativeTensor {
   imag(): NativeTensor;
   conj(): NativeTensor;
   toDense(): NativeTensor;
+  toSparseCoo(): NativeTensor;
+  toSparseCsr(): NativeTensor;
+  toSparseCsc(): NativeTensor;
   coalesce(): NativeTensor;
   sparseIndices(): NativeTensor;
   sparseValues(): NativeTensor;
+  crowIndices(): NativeTensor;
+  colIndices(): NativeTensor;
+  ccolIndices(): NativeTensor;
+  rowIndices(): NativeTensor;
   sparseDim(): number;
   denseDim(): number;
   nnz(): number;
@@ -183,7 +256,7 @@ export interface NativeTensor {
   to(opts: NativeToOptions): NativeTensor;
   backward(grad?: NativeTensor | null, opts?: NativeBackwardOptions): void;
   indexGet(indices: unknown[]): NativeTensor;
-  indexPut(indices: unknown[], value: NativeTensor | Scalar): NativeTensor;
+  indexPut(indices: unknown[], value: NativeTensor | Scalar, accumulate?: boolean): NativeTensor;
   equal(other: NativeTensor): boolean;
   formatString(): string;
 }
@@ -540,7 +613,110 @@ export interface NativeFastOps {
   viewAsReal(input: NativeTensor): NativeTensor;
   viewAsComplex(input: NativeTensor): NativeTensor;
   sparseCooTensor(indices: NativeTensor, values: NativeTensor, size?: number[] | null): NativeTensor;
+  sparseCsrTensor(
+    crowIndices: NativeTensor,
+    colIndices: NativeTensor,
+    values: NativeTensor,
+    size?: number[] | null
+  ): NativeTensor;
   sparseMm(mat1: NativeTensor, mat2: NativeTensor): NativeTensor;
+  ampUnscaleAndCheck(tensors: NativeTensor[], foundInf: NativeTensor, invScale: NativeTensor): void;
+  convTranspose3d(
+    input: NativeTensor,
+    weight: NativeTensor,
+    bias?: NativeTensor | null,
+    stride?: number[],
+    padding?: number[],
+    outputPadding?: number[],
+    groups?: number,
+    dilation?: number[]
+  ): NativeTensor;
+  maxPool1d(
+    input: NativeTensor,
+    kernelSize: number[],
+    stride?: number[] | null,
+    padding?: number[],
+    dilation?: number[],
+    ceilMode?: boolean
+  ): NativeTensor;
+  maxPool3d(
+    input: NativeTensor,
+    kernelSize: number[],
+    stride?: number[] | null,
+    padding?: number[],
+    dilation?: number[],
+    ceilMode?: boolean
+  ): NativeTensor;
+  avgPool1d(
+    input: NativeTensor,
+    kernelSize: number[],
+    stride?: number[] | null,
+    padding?: number[],
+    ceilMode?: boolean,
+    countIncludePad?: boolean
+  ): NativeTensor;
+  avgPool3d(
+    input: NativeTensor,
+    kernelSize: number[],
+    stride?: number[] | null,
+    padding?: number[],
+    ceilMode?: boolean,
+    countIncludePad?: boolean
+  ): NativeTensor;
+  adaptiveMaxPool2d(
+    input: NativeTensor,
+    outputSize: number[],
+    returnIndices?: false
+  ): NativeTensor;
+  adaptiveMaxPool2d(
+    input: NativeTensor,
+    outputSize: number[],
+    returnIndices: true
+  ): { output: NativeTensor; indices: NativeTensor };
+  instanceNorm(
+    input: NativeTensor,
+    weight: NativeTensor | null,
+    bias: NativeTensor | null,
+    runningMean: NativeTensor | null,
+    runningVar: NativeTensor | null,
+    useInputStats: boolean,
+    momentum?: number,
+    eps?: number
+  ): NativeTensor;
+  bilinear(
+    input1: NativeTensor,
+    input2: NativeTensor,
+    weight: NativeTensor,
+    bias?: NativeTensor | null
+  ): NativeTensor;
+  pixelShuffle(input: NativeTensor, upscaleFactor: number): NativeTensor;
+  pixelUnshuffle(input: NativeTensor, downscaleFactor: number): NativeTensor;
+  im2col(
+    input: NativeTensor,
+    kernelSize: number[],
+    dilation?: number[],
+    padding?: number[],
+    stride?: number[]
+  ): NativeTensor;
+  col2im(
+    input: NativeTensor,
+    outputSize: number[],
+    kernelSize: number[],
+    dilation?: number[],
+    padding?: number[],
+    stride?: number[]
+  ): NativeTensor;
+  embeddingBag(
+    weight: NativeTensor,
+    indices: NativeTensor,
+    offsets: NativeTensor,
+    scaleGradByFreq?: boolean,
+    mode?: string,
+    sparse?: boolean,
+    perSampleWeights?: NativeTensor | null,
+    includeLastOffset?: boolean,
+    paddingIdx?: number | null
+  ): NativeTensor;
 }
 
 export interface NativeAddon {
@@ -627,6 +803,13 @@ export interface NativeAddon {
   mpsIsAvailable(): boolean;
   distIsNcclAvailable(): boolean;
   distIsGlooAvailable(): boolean;
+  toDlpack(tensor: NativeTensor): NativeDlpackCapsule;
+  fromDlpack(capsule: NativeDlpackCapsule): NativeTensor;
+  dlpackDevice(tensor: NativeTensor): [number, number];
+  dlpackPointer(capsule: NativeDlpackCapsule): bigint;
+  profilerStart(opts?: Record<string, unknown>): void;
+  profilerStop(): NativeProfilerResult;
+  profilerIsEnabled(): boolean;
   manualSeed(seed: number | bigint): void;
   getNumThreads(): number;
   setNumThreads(n: number): void;

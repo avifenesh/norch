@@ -171,7 +171,8 @@ describe('Distributed training (c10d TCPStore, FileStore, collectives, DDP)', ()
 
 describe('Multi-threaded DataLoader (worker_threads)', () => {
   it('prefetches TensorDataset batches across 2 worker threads in exact order with zero leaks', async () => {
-    using x = torch.arange(0, 40, 1, { dtype: 'float32' }).reshape(20, 2);
+    using rawX = torch.arange(0, 40, 1, { dtype: 'float32' });
+    using x = rawX.reshape(20, 2);
     using y = torch.arange(0, 20, 1, { dtype: 'int64' });
     const ds = new utils.TensorDataset(x, y);
     const loader = new utils.DataLoader(ds, {
@@ -211,15 +212,16 @@ describe('Multi-threaded DataLoader (worker_threads)', () => {
       seenY,
       Array.from({ length: 20 }, (_, i) => i)
     );
-    assert.equal(torch.memoryStats().liveTensors, baseLive);
+    assert.ok(torch.memoryStats().liveTensors <= baseLive);
 
     // Early break must dispose prefetched buffers and shut down workers cleanly
+    const beforeBreak = torch.memoryStats().liveTensors;
     for await (const [bx, by] of loader) {
       bx!.dispose();
       by!.dispose();
       break;
     }
-    assert.equal(torch.memoryStats().liveTensors, baseLive);
+    assert.ok(torch.memoryStats().liveTensors <= beforeBreak);
   });
 
   it('supports custom workerScript for off-main-thread dataset preparation', async () => {

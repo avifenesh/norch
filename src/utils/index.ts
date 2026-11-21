@@ -25,3 +25,11 @@ export {
   type LoadCheckpointOptions,
   type LoadedCheckpointMeta,
 } from './checkpoint_io.js';
+export {
+  dlpack,
+  toDlpack,
+  fromDlpack,
+  dlpackDevice,
+  dlpackPointer,
+  type DlpackCapsule,
+} from './dlpack.js';

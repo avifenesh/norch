@@ -34,6 +34,8 @@ namespace {
       return c10::ScalarType::Byte;
     case napi_int16_array:
       return c10::ScalarType::Short;
+    case napi_uint16_array:
+      return c10::ScalarType::UInt16;
     case napi_int32_array:
       return c10::ScalarType::Int;
     case napi_bigint64_array:
@@ -213,6 +215,7 @@ Napi::Function TensorWrap::Init(Napi::Env env, Napi::Object exports) {
           InstanceMethod("storageOffset", &TensorWrap::StorageOffset),
           InstanceMethod("dtype", &TensorWrap::Dtype),
           InstanceMethod("device", &TensorWrap::Device),
+          InstanceMethod("layout", &TensorWrap::Layout),
           InstanceMethod("isContiguous", &TensorWrap::IsContiguous),
           InstanceMethod("isCuda", &TensorWrap::IsCuda),
           InstanceMethod("isPinned", &TensorWrap::IsPinned),
@@ -223,9 +226,16 @@ Napi::Function TensorWrap::Init(Napi::Env env, Napi::Object exports) {
           InstanceMethod("imag", &TensorWrap::Imag),
           InstanceMethod("conj", &TensorWrap::Conj),
           InstanceMethod("toDense", &TensorWrap::ToDense),
+          InstanceMethod("toSparseCoo", &TensorWrap::ToSparseCoo),
+          InstanceMethod("toSparseCsr", &TensorWrap::ToSparseCsr),
+          InstanceMethod("toSparseCsc", &TensorWrap::ToSparseCsc),
           InstanceMethod("coalesce", &TensorWrap::Coalesce),
           InstanceMethod("sparseIndices", &TensorWrap::SparseIndices),
           InstanceMethod("sparseValues", &TensorWrap::SparseValues),
+          InstanceMethod("crowIndices", &TensorWrap::CrowIndices),
+          InstanceMethod("colIndices", &TensorWrap::ColIndices),
+          InstanceMethod("ccolIndices", &TensorWrap::CcolIndices),
+          InstanceMethod("rowIndices", &TensorWrap::RowIndices),
           InstanceMethod("sparseDim", &TensorWrap::SparseDim),
           InstanceMethod("denseDim", &TensorWrap::DenseDim),
           InstanceMethod("nnz", &TensorWrap::Nnz),
@@ -468,6 +478,28 @@ Napi::Value TensorWrap::Device(const Napi::CallbackInfo& info) {
   });
 }
 
+Napi::Value TensorWrap::Layout(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    switch (tensor().layout()) {
+      case c10::kStrided:
+        return Napi::String::New(env, "strided");
+      case c10::kSparse:
+        return Napi::String::New(env, "sparse_coo");
+      case c10::kSparseCsr:
+        return Napi::String::New(env, "sparse_csr");
+      case c10::kSparseCsc:
+        return Napi::String::New(env, "sparse_csc");
+      case c10::kSparseBsr:
+        return Napi::String::New(env, "sparse_bsr");
+      case c10::kSparseBsc:
+        return Napi::String::New(env, "sparse_bsc");
+      default:
+        return Napi::String::New(env, "other");
+    }
+  });
+}
+
 Napi::Value TensorWrap::IsContiguous(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
@@ -504,7 +536,7 @@ Napi::Value TensorWrap::IsComplex(const Napi::CallbackInfo& info) {
 
 Napi::Value TensorWrap::IsSparse(const Napi::CallbackInfo& info) {
   return GuardNapi(info.Env(), [&]() -> Napi::Value {
-    return Napi::Boolean::New(info.Env(), tensor().is_sparse());
+    return Napi::Boolean::New(info.Env(), tensor().layout() != c10::kStrided);
   });
 }
 
@@ -532,6 +564,24 @@ Napi::Value TensorWrap::ToDense(const Napi::CallbackInfo& info) {
   });
 }
 
+Napi::Value TensorWrap::ToSparseCoo(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor().to_sparse());
+  });
+}
+
+Napi::Value TensorWrap::ToSparseCsr(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor().to_sparse_csr());
+  });
+}
+
+Napi::Value TensorWrap::ToSparseCsc(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor().to_sparse_csc());
+  });
+}
+
 Napi::Value TensorWrap::Coalesce(const Napi::CallbackInfo& info) {
   return GuardNapi(info.Env(), [&]() -> Napi::Value {
     return NewInstance(info.Env(), tensor().coalesce());
@@ -546,7 +596,32 @@ Napi::Value TensorWrap::SparseIndices(const Napi::CallbackInfo& info) {
 
 Napi::Value TensorWrap::SparseValues(const Napi::CallbackInfo& info) {
   return GuardNapi(info.Env(), [&]() -> Napi::Value {
-    return NewInstance(info.Env(), tensor()._values());
+    const auto& t = tensor();
+    return NewInstance(info.Env(), t.is_sparse() ? t._values() : t.values());
+  });
+}
+
+Napi::Value TensorWrap::CrowIndices(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor().crow_indices());
+  });
+}
+
+Napi::Value TensorWrap::ColIndices(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor().col_indices());
+  });
+}
+
+Napi::Value TensorWrap::CcolIndices(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor().ccol_indices());
+  });
+}
+
+Napi::Value TensorWrap::RowIndices(const Napi::CallbackInfo& info) {
+  return GuardNapi(info.Env(), [&]() -> Napi::Value {
+    return NewInstance(info.Env(), tensor().row_indices());
   });
 }
 
@@ -1062,7 +1137,39 @@ Napi::Value TensorWrap::IndexPut(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
     if (info.Length() < 2) {
-      throw Napi::TypeError::New(env, "indexPut(indices, value) expects >= 2 args");
+      throw Napi::TypeError::New(env, "indexPut(indices, value, accumulate?) expects >= 2 args");
+    }
+    const bool accumulate = info.Length() >= 3 && info[2].ToBoolean().Value();
+    if (accumulate) {
+      if (!info[0].IsArray()) {
+        throw Napi::TypeError::New(env, "indexPut(..., accumulate=true) expects an array of Tensor/null indices");
+      }
+      const auto arr = info[0].As<Napi::Array>();
+      c10::List<std::optional<at::Tensor>> idx_list;
+      idx_list.reserve(arr.Length());
+      for (std::uint32_t i = 0; i < arr.Length(); ++i) {
+        const auto elem = arr.Get(i);
+        if (elem.IsNull() || elem.IsUndefined() ||
+            (elem.IsString() && elem.As<Napi::String>().Utf8Value() == ":")) {
+          idx_list.push_back(std::nullopt);
+        } else if (IsTensorWrap(env, elem)) {
+          idx_list.push_back(UnwrapTensor(env, elem));
+        } else if (elem.IsNumber()) {
+          idx_list.push_back(
+              at::tensor(elem.As<Napi::Number>().Int64Value(),
+                         at::TensorOptions().dtype(c10::kLong).device(tensor().device())));
+        } else {
+          throw Napi::TypeError::New(
+              env, "indexPut(..., accumulate=true) supports Tensor, integer, or ':'/null indices");
+        }
+      }
+      at::Tensor rhs = IsTensorWrap(env, info[1])
+                           ? UnwrapTensor(env, info[1])
+                           : at::scalar_tensor(
+                                 ParseScalar(env, info[1]),
+                                 at::TensorOptions().dtype(tensor().scalar_type()).device(tensor().device()));
+      mutable_tensor().index_put_(idx_list, rhs, /*accumulate=*/true);
+      return info.This();
     }
     const auto indices = ParseTensorIndices(env, info[0]);
     if (IsTensorWrap(env, info[1])) {

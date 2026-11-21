@@ -96,6 +96,61 @@ try {
     }
     dist.barrier();
 
+    // 6b. Gather, Scatter, AllToAll, asyncOp DistWork, and shared-store newGroup subgroup
+    using gIn = torch.tensor([rank + 10, rank + 20], { dtype: 'float32' });
+    if (rank === 0) {
+      using gOut0 = torch.zeros([2], { dtype: 'float32' });
+      using gOut1 = torch.zeros([2], { dtype: 'float32' });
+      dist.gather(gIn, [gOut0, gOut1], 0);
+      assert.deepEqual(toNums(gOut0), [10, 20]);
+      assert.deepEqual(toNums(gOut1), [11, 21]);
+    } else {
+      dist.gather(gIn, null, 0);
+    }
+
+    using sOut = torch.zeros([2], { dtype: 'float32' });
+    if (rank === 0) {
+      using sIn0 = torch.tensor([100, 101], { dtype: 'float32' });
+      using sIn1 = torch.tensor([200, 201], { dtype: 'float32' });
+      dist.scatter(sOut, [sIn0, sIn1], 0);
+      assert.deepEqual(toNums(sOut), [100, 101]);
+    } else {
+      dist.scatter(sOut, null, 0);
+      assert.deepEqual(toNums(sOut), [200, 201]);
+    }
+
+    using a2aIn0 = torch.tensor([rank * 10 + 1], { dtype: 'float32' });
+    using a2aIn1 = torch.tensor([rank * 10 + 2], { dtype: 'float32' });
+    using a2aOut0 = torch.zeros([1], { dtype: 'float32' });
+    using a2aOut1 = torch.zeros([1], { dtype: 'float32' });
+    const a2aWork = dist.allToAll([a2aOut0, a2aOut1], [a2aIn0, a2aIn1], undefined, true);
+    assert.ok(a2aWork !== undefined);
+    assert.equal(a2aWork!.wait(), true);
+    assert.equal(a2aWork!.isCompleted(), true);
+    assert.deepEqual(toNums(a2aOut0), [rank === 0 ? 1 : 2]);
+    assert.deepEqual(toNums(a2aOut1), [rank === 0 ? 11 : 12]);
+
+    // Shared-store subgroup via newGroup (no extra TCP port)
+    const subPg = dist.newGroup([0, 1], { groupName: 'sub_test' });
+    assert.ok(subPg !== null);
+    using subT = torch.tensor([rank + 5], { dtype: 'float32' });
+    const subWork = dist.allReduce(subT, dist.ReduceOp.SUM, subPg!, true);
+    subWork!.wait();
+    assert.deepEqual(toNums(subT), [11]);
+    subPg!.destroy();
+
+    // SyncBatchNorm computes identical global stats across ranks
+    using sbn = new nn.SyncBatchNorm(2);
+    using sbnIn =
+      rank === 0
+        ? torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+        : torch.tensor([[5.0, 6.0], [7.0, 8.0]]);
+    using sbnOut = sbn.forward(sbnIn);
+    // Global mean = [4, 5], runningMean updated with momentum=0.1 -> 0 + 0.1*[4, 5] = [0.4, 0.5]
+    const rm = toNums(sbn.runningMean!);
+    assert.ok(Math.abs(rm[0]! - 0.4) < 1e-5 && Math.abs(rm[1]! - 0.5) < 1e-5);
+    dist.barrier();
+
     // 7. DistributedSampler determinism & partitioning
     const sampler = new utils.DistributedSampler({ length: 8 }, { shuffle: true, seed: 123 });
     const ep0 = Array.from(sampler);
@@ -114,9 +169,11 @@ try {
     }
 
     // Deliberately different seeds per rank; DDP must broadcast rank-0 weights!
+    // Use small bucketCapMb to force multiple coalesced async gradient buckets!
     torch.manualSeed(rank === 0 ? 777 : 999);
     using baseModel = new TinyMLP();
-    using ddp = new nn.parallel.DistributedDataParallel(baseModel);
+    using ddp = new nn.parallel.DistributedDataParallel(baseModel, { bucketCapMb: 0.0001 });
+    assert.ok(ddp.bucketCount >= 2);
     using optimizer = new optim.SGD(ddp.parameters(), { lr: 0.1 });
 
     // Deterministic synthetic 8-sample dataset split evenly across rank 0 and rank 1

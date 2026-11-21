@@ -309,6 +309,17 @@ export function sparseCooTensor(indices: Tensor, values: Tensor, size?: number[]
   return wrapTensor(native.fast.sparseCooTensor(indices._native, values._native, size ?? null));
 }
 
+export function sparseCsrTensor(
+  crowIndices: Tensor,
+  colIndices: Tensor,
+  values: Tensor,
+  size?: number[]
+): Tensor {
+  return wrapTensor(
+    native.fast.sparseCsrTensor(crowIndices._native, colIndices._native, values._native, size ?? null)
+  );
+}
+
 export const sparse = {
   mm(mat1: Tensor, mat2: Tensor): Tensor {
     return wrapTensor(native.fast.sparseMm(mat1._native, mat2._native));

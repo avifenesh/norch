@@ -99,7 +99,9 @@ set(NORCH_SOURCES
   native/src/ops_fast.cpp
   native/src/cuda.cpp
   native/src/distributed.cpp
+  native/src/dlpack.cpp
   native/src/export_runner.cpp
+  native/src/profiler.cpp
 )
 
 add_library(norch_native SHARED ${NORCH_SOURCES})

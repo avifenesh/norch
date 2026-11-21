@@ -1626,6 +1626,286 @@ Napi::Value SparseMmOp(const Napi::CallbackInfo& info) {
   });
 }
 
+Napi::Value SparseCsrTensorOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& crow = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& col = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto& vals = TensorWrap::UnwrapTensor(env, info[2]);
+    const auto opts = at::TensorOptions().dtype(vals.scalar_type()).device(vals.device());
+    if (info.Length() >= 4 && !info[3].IsUndefined() && !info[3].IsNull()) {
+      return TensorWrap::NewInstance(
+          env, at::sparse_csr_tensor(crow, col, vals, ParseIntArray(env, info[3]), opts));
+    }
+    return TensorWrap::NewInstance(env, at::sparse_csr_tensor(crow, col, vals, opts));
+  });
+}
+
+Napi::Value AmpUnscaleAndCheckOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    auto tensors = ParseTensorList(env, info[0]);
+    auto& found_inf = TensorWrap::UnwrapMutableTensor(env, info[1]);
+    const auto& inv_scale = TensorWrap::UnwrapTensor(env, info[2]);
+    at::_amp_foreach_non_finite_check_and_unscale_(tensors, found_inf, inv_scale);
+    return env.Undefined();
+  });
+}
+
+Napi::Value ConvTranspose3dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& weight = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto bias = info.Length() >= 3 ? ParseOptionalTensor(env, info[2]) : std::nullopt;
+    const auto stride = (info.Length() >= 4 && !info[3].IsUndefined())
+                            ? ParseIntArray(env, info[3])
+                            : std::vector<std::int64_t>{1, 1, 1};
+    const auto padding = (info.Length() >= 5 && !info[4].IsUndefined())
+                             ? ParseIntArray(env, info[4])
+                             : std::vector<std::int64_t>{0, 0, 0};
+    const auto output_padding = (info.Length() >= 6 && !info[5].IsUndefined())
+                                    ? ParseIntArray(env, info[5])
+                                    : std::vector<std::int64_t>{0, 0, 0};
+    const auto groups = info.Length() >= 7 ? info[6].As<Napi::Number>().Int64Value() : 1;
+    const auto dilation = (info.Length() >= 8 && !info[7].IsUndefined())
+                              ? ParseIntArray(env, info[7])
+                              : std::vector<std::int64_t>{1, 1, 1};
+    return TensorWrap::NewInstance(
+        env,
+        at::conv_transpose3d(
+            input, weight, bias, stride, padding, output_padding, groups, dilation));
+  });
+}
+
+Napi::Value MaxPool1dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto kernel = ParseIntArray(env, info[1]);
+    const auto stride = (info.Length() >= 3 && !info[2].IsUndefined() && !info[2].IsNull())
+                            ? ParseIntArray(env, info[2])
+                            : std::vector<std::int64_t>{};
+    const auto padding = (info.Length() >= 4 && !info[3].IsUndefined())
+                             ? ParseIntArray(env, info[3])
+                             : std::vector<std::int64_t>{0};
+    const auto dilation = (info.Length() >= 5 && !info[4].IsUndefined())
+                              ? ParseIntArray(env, info[4])
+                              : std::vector<std::int64_t>{1};
+    const bool ceil_mode = info.Length() >= 6 && info[5].ToBoolean().Value();
+    return TensorWrap::NewInstance(
+        env, at::max_pool1d(input, kernel, stride, padding, dilation, ceil_mode));
+  });
+}
+
+Napi::Value MaxPool3dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto kernel = ParseIntArray(env, info[1]);
+    const auto stride = (info.Length() >= 3 && !info[2].IsUndefined() && !info[2].IsNull())
+                            ? ParseIntArray(env, info[2])
+                            : std::vector<std::int64_t>{};
+    const auto padding = (info.Length() >= 4 && !info[3].IsUndefined())
+                             ? ParseIntArray(env, info[3])
+                             : std::vector<std::int64_t>{0, 0, 0};
+    const auto dilation = (info.Length() >= 5 && !info[4].IsUndefined())
+                              ? ParseIntArray(env, info[4])
+                              : std::vector<std::int64_t>{1, 1, 1};
+    const bool ceil_mode = info.Length() >= 6 && info[5].ToBoolean().Value();
+    return TensorWrap::NewInstance(
+        env, at::max_pool3d(input, kernel, stride, padding, dilation, ceil_mode));
+  });
+}
+
+Napi::Value AvgPool1dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto kernel = ParseIntArray(env, info[1]);
+    const auto stride = (info.Length() >= 3 && !info[2].IsUndefined() && !info[2].IsNull())
+                            ? ParseIntArray(env, info[2])
+                            : std::vector<std::int64_t>{};
+    const auto padding = (info.Length() >= 4 && !info[3].IsUndefined())
+                             ? ParseIntArray(env, info[3])
+                             : std::vector<std::int64_t>{0};
+    const bool ceil_mode = info.Length() >= 5 && info[4].ToBoolean().Value();
+    const bool count_include_pad = info.Length() < 6 || info[5].ToBoolean().Value();
+    return TensorWrap::NewInstance(
+        env, at::avg_pool1d(input, kernel, stride, padding, ceil_mode, count_include_pad));
+  });
+}
+
+Napi::Value AvgPool3dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto kernel = ParseIntArray(env, info[1]);
+    const auto stride = (info.Length() >= 3 && !info[2].IsUndefined() && !info[2].IsNull())
+                            ? ParseIntArray(env, info[2])
+                            : std::vector<std::int64_t>{};
+    const auto padding = (info.Length() >= 4 && !info[3].IsUndefined())
+                             ? ParseIntArray(env, info[3])
+                             : std::vector<std::int64_t>{0, 0, 0};
+    const bool ceil_mode = info.Length() >= 5 && info[4].ToBoolean().Value();
+    const bool count_include_pad = info.Length() < 6 || info[5].ToBoolean().Value();
+    return TensorWrap::NewInstance(
+        env, at::avg_pool3d(input, kernel, stride, padding, ceil_mode, count_include_pad));
+  });
+}
+
+Napi::Value AdaptiveMaxPool2dOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto out_size = ParseIntArray(env, info[1]);
+    auto [out, indices] = at::adaptive_max_pool2d(input, out_size);
+    const bool return_indices = info.Length() >= 3 && info[2].ToBoolean().Value();
+    if (return_indices) {
+      auto res = Napi::Object::New(env);
+      res.Set("output", TensorWrap::NewInstance(env, std::move(out)));
+      res.Set("indices", TensorWrap::NewInstance(env, std::move(indices)));
+      return res;
+    }
+    return TensorWrap::NewInstance(env, std::move(out));
+  });
+}
+
+Napi::Value InstanceNormOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto weight = ParseOptionalTensor(env, info[1]);
+    const auto bias = ParseOptionalTensor(env, info[2]);
+    const auto running_mean = ParseOptionalTensor(env, info[3]);
+    const auto running_var = ParseOptionalTensor(env, info[4]);
+    const bool use_input_stats = info[5].ToBoolean().Value();
+    const double momentum = info.Length() >= 7 ? info[6].As<Napi::Number>().DoubleValue() : 0.1;
+    const double eps = info.Length() >= 8 ? info[7].As<Napi::Number>().DoubleValue() : 1e-5;
+    return TensorWrap::NewInstance(
+        env,
+        at::instance_norm(
+            input,
+            weight,
+            bias,
+            running_mean,
+            running_var,
+            use_input_stats,
+            momentum,
+            eps,
+            /*cudnn_enabled=*/true));
+  });
+}
+
+Napi::Value BilinearOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& x1 = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& x2 = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto& w = TensorWrap::UnwrapTensor(env, info[2]);
+    const auto b = info.Length() >= 4 ? ParseOptionalTensor(env, info[3]) : std::nullopt;
+    return TensorWrap::NewInstance(env, at::bilinear(x1, x2, w, b));
+  });
+}
+
+Napi::Value PixelShuffleOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return TensorWrap::NewInstance(
+        env,
+        at::pixel_shuffle(
+            TensorWrap::UnwrapTensor(env, info[0]), info[1].As<Napi::Number>().Int64Value()));
+  });
+}
+
+Napi::Value PixelUnshuffleOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return TensorWrap::NewInstance(
+        env,
+        at::pixel_unshuffle(
+            TensorWrap::UnwrapTensor(env, info[0]), info[1].As<Napi::Number>().Int64Value()));
+  });
+}
+
+Napi::Value Im2ColOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto kernel = ParseIntArray(env, info[1]);
+    const auto dilation = (info.Length() >= 3 && !info[2].IsUndefined())
+                              ? ParseIntArray(env, info[2])
+                              : std::vector<std::int64_t>{1, 1};
+    const auto padding = (info.Length() >= 4 && !info[3].IsUndefined())
+                             ? ParseIntArray(env, info[3])
+                             : std::vector<std::int64_t>{0, 0};
+    const auto stride = (info.Length() >= 5 && !info[4].IsUndefined())
+                            ? ParseIntArray(env, info[4])
+                            : std::vector<std::int64_t>{1, 1};
+    return TensorWrap::NewInstance(env, at::im2col(input, kernel, dilation, padding, stride));
+  });
+}
+
+Napi::Value Col2ImOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& input = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto output_size = ParseIntArray(env, info[1]);
+    const auto kernel = ParseIntArray(env, info[2]);
+    const auto dilation = (info.Length() >= 4 && !info[3].IsUndefined())
+                              ? ParseIntArray(env, info[3])
+                              : std::vector<std::int64_t>{1, 1};
+    const auto padding = (info.Length() >= 5 && !info[4].IsUndefined())
+                             ? ParseIntArray(env, info[4])
+                             : std::vector<std::int64_t>{0, 0};
+    const auto stride = (info.Length() >= 6 && !info[5].IsUndefined())
+                            ? ParseIntArray(env, info[5])
+                            : std::vector<std::int64_t>{1, 1};
+    return TensorWrap::NewInstance(
+        env, at::col2im(input, output_size, kernel, dilation, padding, stride));
+  });
+}
+
+Napi::Value EmbeddingBagOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& weight = TensorWrap::UnwrapTensor(env, info[0]);
+    const auto& indices = TensorWrap::UnwrapTensor(env, info[1]);
+    const auto& offsets = TensorWrap::UnwrapTensor(env, info[2]);
+    const bool scale_grad_by_freq = info.Length() >= 4 && info[3].ToBoolean().Value();
+    const std::string mode_str =
+        (info.Length() >= 5 && info[4].IsString()) ? info[4].As<Napi::String>().Utf8Value() : "mean";
+    std::int64_t mode = 1;
+    if (mode_str == "sum") {
+      mode = 0;
+    } else if (mode_str == "mean") {
+      mode = 1;
+    } else if (mode_str == "max") {
+      mode = 2;
+    } else {
+      throw Napi::RangeError::New(env, "Unsupported EmbeddingBag mode: " + mode_str);
+    }
+    const bool sparse = info.Length() >= 6 && info[5].ToBoolean().Value();
+    const auto per_sample_weights = info.Length() >= 7 ? ParseOptionalTensor(env, info[6]) : std::nullopt;
+    const bool include_last_offset = info.Length() >= 8 && info[7].ToBoolean().Value();
+    std::optional<std::int64_t> padding_idx = std::nullopt;
+    if (info.Length() >= 9 && info[8].IsNumber()) {
+      padding_idx = info[8].As<Napi::Number>().Int64Value();
+    }
+    auto [out, offset2bag, bag_size, max_indices] = at::embedding_bag(
+        weight,
+        indices,
+        offsets,
+        scale_grad_by_freq,
+        mode,
+        sparse,
+        per_sample_weights,
+        include_last_offset,
+        padding_idx);
+    return TensorWrap::NewInstance(env, std::move(out));
+  });
+}
+
 }  // namespace
 
 void RegisterFastOps(Napi::Env env, Napi::Object exports) {
@@ -1759,7 +2039,22 @@ void RegisterFastOps(Napi::Env env, Napi::Object exports) {
   ops.Set("viewAsReal", Napi::Function::New(env, ViewAsRealOp));
   ops.Set("viewAsComplex", Napi::Function::New(env, ViewAsComplexOp));
   ops.Set("sparseCooTensor", Napi::Function::New(env, SparseCooTensorOp));
+  ops.Set("sparseCsrTensor", Napi::Function::New(env, SparseCsrTensorOp));
   ops.Set("sparseMm", Napi::Function::New(env, SparseMmOp));
+  ops.Set("ampUnscaleAndCheck", Napi::Function::New(env, AmpUnscaleAndCheckOp));
+  ops.Set("convTranspose3d", Napi::Function::New(env, ConvTranspose3dOp));
+  ops.Set("maxPool1d", Napi::Function::New(env, MaxPool1dOp));
+  ops.Set("maxPool3d", Napi::Function::New(env, MaxPool3dOp));
+  ops.Set("avgPool1d", Napi::Function::New(env, AvgPool1dOp));
+  ops.Set("avgPool3d", Napi::Function::New(env, AvgPool3dOp));
+  ops.Set("adaptiveMaxPool2d", Napi::Function::New(env, AdaptiveMaxPool2dOp));
+  ops.Set("instanceNorm", Napi::Function::New(env, InstanceNormOp));
+  ops.Set("bilinear", Napi::Function::New(env, BilinearOp));
+  ops.Set("pixelShuffle", Napi::Function::New(env, PixelShuffleOp));
+  ops.Set("pixelUnshuffle", Napi::Function::New(env, PixelUnshuffleOp));
+  ops.Set("im2col", Napi::Function::New(env, Im2ColOp));
+  ops.Set("col2im", Napi::Function::New(env, Col2ImOp));
+  ops.Set("embeddingBag", Napi::Function::New(env, EmbeddingBagOp));
 
   exports.Set("fast", ops);
 }

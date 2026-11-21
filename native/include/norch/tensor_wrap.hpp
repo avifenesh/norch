@@ -48,6 +48,7 @@ class TensorWrap : public Napi::ObjectWrap<TensorWrap> {
   Napi::Value StorageOffset(const Napi::CallbackInfo& info);
   Napi::Value Dtype(const Napi::CallbackInfo& info);
   Napi::Value Device(const Napi::CallbackInfo& info);
+  Napi::Value Layout(const Napi::CallbackInfo& info);
   Napi::Value IsContiguous(const Napi::CallbackInfo& info);
   Napi::Value IsCuda(const Napi::CallbackInfo& info);
   Napi::Value IsPinned(const Napi::CallbackInfo& info);
@@ -58,9 +59,16 @@ class TensorWrap : public Napi::ObjectWrap<TensorWrap> {
   Napi::Value Imag(const Napi::CallbackInfo& info);
   Napi::Value Conj(const Napi::CallbackInfo& info);
   Napi::Value ToDense(const Napi::CallbackInfo& info);
+  Napi::Value ToSparseCoo(const Napi::CallbackInfo& info);
+  Napi::Value ToSparseCsr(const Napi::CallbackInfo& info);
+  Napi::Value ToSparseCsc(const Napi::CallbackInfo& info);
   Napi::Value Coalesce(const Napi::CallbackInfo& info);
   Napi::Value SparseIndices(const Napi::CallbackInfo& info);
   Napi::Value SparseValues(const Napi::CallbackInfo& info);
+  Napi::Value CrowIndices(const Napi::CallbackInfo& info);
+  Napi::Value ColIndices(const Napi::CallbackInfo& info);
+  Napi::Value CcolIndices(const Napi::CallbackInfo& info);
+  Napi::Value RowIndices(const Napi::CallbackInfo& info);
   Napi::Value SparseDim(const Napi::CallbackInfo& info);
   Napi::Value DenseDim(const Napi::CallbackInfo& info);
   Napi::Value Nnz(const Napi::CallbackInfo& info);

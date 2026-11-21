@@ -1,5 +1,8 @@
 import { noGrad } from './autograd.js';
+import type { Device } from './device.js';
 import { tidy } from './memory.js';
+import { native, type NativeTensor } from './native.js';
+import { full } from './ops.js';
 import type { Optimizer } from './optim/optimizer.js';
 import type { Tensor } from './tensor.js';
 
@@ -11,15 +14,23 @@ export interface GradScalerOptions {
   enabled?: boolean;
 }
 
+export interface GradScalerStateDict {
+  scale: number;
+  growthFactor: number;
+  backoffFactor: number;
+  growthInterval: number;
+  growthTracker: number;
+}
+
 /**
  * Dynamic loss scaling for mixed-precision (FP16/BF16) training,
- * matching torch.amp.GradScaler semantics.
+ * using libtorch's fused `_amp_foreach_non_finite_check_and_unscale_` kernel.
  */
 export class GradScaler {
   private _scale: number;
-  private readonly growthFactor: number;
-  private readonly backoffFactor: number;
-  private readonly growthInterval: number;
+  private growthFactor: number;
+  private backoffFactor: number;
+  private growthInterval: number;
   readonly enabled: boolean;
   private growthTracker = 0;
   private foundInf = false;
@@ -46,19 +57,34 @@ export class GradScaler {
     if (!this.enabled || this.unscaled) return;
     this.unscaled = true;
     this.foundInf = false;
-    const invScale = 1.0 / this._scale;
+    const invScaleVal = 1.0 / this._scale;
 
     noGrad(() => {
       tidy(() => {
+        // Group gradients by device+dtype for fused multi-tensor unscale + inf check
+        const buckets = new Map<string, { device: Device; grads: NativeTensor[] }>();
         for (const group of optimizer.paramGroups) {
           for (const p of group.params) {
             const g = p.grad;
             if (!g) continue;
-            g.mul_(invScale);
-            const allFinite = g.isfinite().all().item() !== 0;
-            if (!allFinite) {
-              this.foundInf = true;
+            const dev = g.device;
+            const key = `${dev.toString()}:${g.dtype}`;
+            let bucket = buckets.get(key);
+            if (!bucket) {
+              bucket = { device: dev, grads: [] };
+              buckets.set(key, bucket);
             }
+            bucket.grads.push(g._native);
+          }
+        }
+
+        // One fused kernel per device/dtype bucket, checking foundInf once per bucket
+        for (const bucket of buckets.values()) {
+          const foundInfTensor = full([1], 0.0, { dtype: 'float32', device: bucket.device });
+          const invScaleTensor = full([1], invScaleVal, { dtype: 'float32', device: bucket.device });
+          native.fast.ampUnscaleAndCheck(bucket.grads, foundInfTensor._native, invScaleTensor._native);
+          if (foundInfTensor.item() !== 0) {
+            this.foundInf = true;
           }
         }
       });
@@ -94,6 +120,26 @@ export class GradScaler {
         this.growthTracker = 0;
       }
     }
+    this.foundInf = false;
+    this.unscaled = false;
+  }
+
+  stateDict(): GradScalerStateDict {
+    return {
+      scale: this._scale,
+      growthFactor: this.growthFactor,
+      backoffFactor: this.backoffFactor,
+      growthInterval: this.growthInterval,
+      growthTracker: this.growthTracker,
+    };
+  }
+
+  loadStateDict(state: GradScalerStateDict): void {
+    this._scale = state.scale;
+    this.growthFactor = state.growthFactor;
+    this.backoffFactor = state.backoffFactor;
+    this.growthInterval = state.growthInterval;
+    this.growthTracker = state.growthTracker;
     this.foundInf = false;
     this.unscaled = false;
   }

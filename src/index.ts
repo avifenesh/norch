@@ -11,6 +11,9 @@ import * as fftMod from './fft.js';
 import * as specialMod from './special.js';
 import * as distributionsMod from './distributions.js';
 import * as distributedMod from './distributed.js';
+import * as funcMod from './func.js';
+import * as profilerMod from './profiler.js';
+import * as quantMod from './quantization.js';
 import * as exportMod from './export.js';
 import * as nn from './nn/index.js';
 import * as optim from './optim/index.js';
@@ -30,6 +33,9 @@ export * from './fft.js';
 export * from './special.js';
 export * from './distributions.js';
 export * from './distributed.js';
+export { func, valueAndGrad, jacrev, jacfwd, hessian, vmap, functionalCall } from './func.js';
+export * from './profiler.js';
+export * from './quantization.js';
 export * from './export.js';
 export { nn, optim, utils, amp };
 export { functional as F } from './functional.js';
@@ -135,6 +141,7 @@ export const torch = {
   viewAsReal: opsMod.viewAsReal,
   viewAsComplex: opsMod.viewAsComplex,
   sparseCooTensor: opsMod.sparseCooTensor,
+  sparseCsrTensor: opsMod.sparseCsrTensor,
   sparse: opsMod.sparse,
   ops: opsMod.ops,
   linalg: linalgMod.linalg,
@@ -142,6 +149,9 @@ export const torch = {
   special: specialMod.special,
   distributions: distributionsMod.distributions,
   distributed: distributedMod.distributed,
+  func: funcMod.func,
+  profiler: profilerMod.profiler,
+  ao: quantMod.ao,
 
   // Autograd
   isGradEnabled: autogradMod.isGradEnabled,

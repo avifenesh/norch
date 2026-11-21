@@ -105,3 +105,134 @@ export class TransformerBlock extends Module {
     return this.norm2.forward(r1.add(this.drop.forward(h2)));
   }
 }
+
+export class TransformerEncoderLayer extends TransformerBlock {}
+
+export class TransformerEncoder extends Module {
+  readonly layers: TransformerEncoderLayer[] = [];
+  readonly norm: LayerNorm | null;
+
+  constructor(
+    createLayer: () => TransformerEncoderLayer,
+    numLayers: number,
+    norm?: LayerNorm | null
+  ) {
+    super();
+    for (let i = 0; i < numLayers; i++) {
+      const layer = createLayer();
+      this.layers.push(layer);
+      this.addModule(`layer_${i}`, layer);
+    }
+    this.norm = norm ?? null;
+    if (this.norm) {
+      this.addModule('norm', this.norm);
+    }
+  }
+
+  forward(src: Tensor, opts?: { attnMask?: Tensor | null; isCausal?: boolean }): Tensor {
+    let out = src;
+    for (const layer of this.layers) {
+      out = layer.call(out, opts) as Tensor;
+    }
+    return this.norm ? (this.norm.call(out) as Tensor) : out;
+  }
+}
+
+export class TransformerDecoderLayer extends Module {
+  readonly selfAttn: MultiheadAttention;
+  readonly multiheadAttn: MultiheadAttention;
+  readonly linear1: Linear;
+  readonly linear2: Linear;
+  readonly norm1: LayerNorm;
+  readonly norm2: LayerNorm;
+  readonly norm3: LayerNorm;
+  readonly drop: Dropout;
+  readonly normFirst: boolean;
+
+  constructor(dModel: number, nHead: number, opts?: TransformerBlockOptions) {
+    super();
+    const dff = opts?.dimFeedforward ?? dModel * 4;
+    const drop = opts?.dropout ?? 0.0;
+    this.normFirst = opts?.normFirst ?? true;
+    const common: TensorOptions = { dtype: opts?.dtype, device: opts?.device };
+    this.selfAttn = new MultiheadAttention(dModel, nHead, { ...common, dropout: drop });
+    this.multiheadAttn = new MultiheadAttention(dModel, nHead, { ...common, dropout: drop });
+    this.linear1 = new Linear(dModel, dff, common);
+    this.linear2 = new Linear(dff, dModel, common);
+    this.norm1 = new LayerNorm(dModel, common);
+    this.norm2 = new LayerNorm(dModel, common);
+    this.norm3 = new LayerNorm(dModel, common);
+    this.drop = new Dropout(drop);
+  }
+
+  forward(
+    tgt: Tensor,
+    memory: Tensor,
+    opts?: {
+      tgtMask?: Tensor | null;
+      memoryMask?: Tensor | null;
+      tgtIsCausal?: boolean;
+    }
+  ): Tensor {
+    if (this.normFirst) {
+      const sa = this.selfAttn.forward(this.norm1.forward(tgt), undefined, undefined, {
+        attnMask: opts?.tgtMask ?? null,
+        isCausal: opts?.tgtIsCausal ?? false,
+      });
+      const r1 = tgt.add(this.drop.forward(sa));
+      const ca = this.multiheadAttn.forward(this.norm2.forward(r1), memory, memory, {
+        attnMask: opts?.memoryMask ?? null,
+        isCausal: false,
+      });
+      const r2 = r1.add(this.drop.forward(ca));
+      const ff = this.linear2.forward(this.drop.forward(this.linear1.forward(this.norm3.forward(r2)).gelu()));
+      return r2.add(this.drop.forward(ff));
+    }
+    const sa = this.selfAttn.forward(tgt, undefined, undefined, {
+      attnMask: opts?.tgtMask ?? null,
+      isCausal: opts?.tgtIsCausal ?? false,
+    });
+    const r1 = this.norm1.forward(tgt.add(this.drop.forward(sa)));
+    const ca = this.multiheadAttn.forward(r1, memory, memory, {
+      attnMask: opts?.memoryMask ?? null,
+      isCausal: false,
+    });
+    const r2 = this.norm2.forward(r1.add(this.drop.forward(ca)));
+    const ff = this.linear2.forward(this.drop.forward(this.linear1.forward(r2).gelu()));
+    return this.norm3.forward(r2.add(this.drop.forward(ff)));
+  }
+}
+
+export class TransformerDecoder extends Module {
+  readonly layers: TransformerDecoderLayer[] = [];
+  readonly norm: LayerNorm | null;
+
+  constructor(
+    createLayer: () => TransformerDecoderLayer,
+    numLayers: number,
+    norm?: LayerNorm | null
+  ) {
+    super();
+    for (let i = 0; i < numLayers; i++) {
+      const layer = createLayer();
+      this.layers.push(layer);
+      this.addModule(`layer_${i}`, layer);
+    }
+    this.norm = norm ?? null;
+    if (this.norm) {
+      this.addModule('norm', this.norm);
+    }
+  }
+
+  forward(
+    tgt: Tensor,
+    memory: Tensor,
+    opts?: { tgtMask?: Tensor | null; memoryMask?: Tensor | null; tgtIsCausal?: boolean }
+  ): Tensor {
+    let out = tgt;
+    for (const layer of this.layers) {
+      out = layer.call(out, memory, opts) as Tensor;
+    }
+    return this.norm ? (this.norm.call(out) as Tensor) : out;
+  }
+}

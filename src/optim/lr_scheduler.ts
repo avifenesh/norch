@@ -313,3 +313,119 @@ export class ReduceLROnPlateau<TGroup extends ParamGroupBase = ParamGroupBase> {
     }
   }
 }
+
+export class ExponentialLR<
+  TGroup extends ParamGroupBase = ParamGroupBase,
+> extends LRScheduler<TGroup> {
+  readonly gamma: number;
+
+  constructor(optimizer: Optimizer<TGroup>, gamma: number) {
+    super(optimizer);
+    this.gamma = gamma;
+    this.step();
+  }
+
+  getLr(): number[] {
+    const factor = Math.pow(this.gamma, Math.max(0, this.lastEpoch));
+    return this.baseLrs.map((lr) => lr * factor);
+  }
+}
+
+export class MultiStepLR<
+  TGroup extends ParamGroupBase = ParamGroupBase,
+> extends LRScheduler<TGroup> {
+  readonly milestones: number[];
+  readonly gamma: number;
+
+  constructor(optimizer: Optimizer<TGroup>, milestones: number[], gamma = 0.1) {
+    super(optimizer);
+    this.milestones = [...milestones].sort((a, b) => a - b);
+    this.gamma = gamma;
+    this.step();
+  }
+
+  getLr(): number[] {
+    let passed = 0;
+    for (const m of this.milestones) {
+      if (this.lastEpoch >= m) passed += 1;
+    }
+    const factor = Math.pow(this.gamma, passed);
+    return this.baseLrs.map((lr) => lr * factor);
+  }
+}
+
+export class LambdaLR<
+  TGroup extends ParamGroupBase = ParamGroupBase,
+> extends LRScheduler<TGroup> {
+  readonly lrLambdas: ((epoch: number) => number)[];
+
+  constructor(
+    optimizer: Optimizer<TGroup>,
+    lrLambda: ((epoch: number) => number) | ((epoch: number) => number)[]
+  ) {
+    super(optimizer);
+    this.lrLambdas = Array.isArray(lrLambda)
+      ? lrLambda
+      : optimizer.paramGroups.map(() => lrLambda);
+    if (this.lrLambdas.length !== optimizer.paramGroups.length) {
+      throw new RangeError('lrLambda length must match optimizer paramGroups length');
+    }
+    this.step();
+  }
+
+  getLr(): number[] {
+    return this.baseLrs.map((base, i) => base * this.lrLambdas[i]!(Math.max(0, this.lastEpoch)));
+  }
+}
+
+export class CosineAnnealingWarmRestarts<
+  TGroup extends ParamGroupBase = ParamGroupBase,
+> extends LRScheduler<TGroup> {
+  readonly t0: number;
+  readonly tMult: number;
+  readonly etaMin: number;
+
+  constructor(optimizer: Optimizer<TGroup>, t0: number, tMult = 1, etaMin = 0) {
+    super(optimizer);
+    if (t0 <= 0) throw new RangeError('t0 must be > 0');
+    if (tMult < 1) throw new RangeError('tMult must be >= 1');
+    this.t0 = t0;
+    this.tMult = tMult;
+    this.etaMin = etaMin;
+    this.step();
+  }
+
+  getLr(): number[] {
+    const epoch = Math.max(0, this.lastEpoch);
+    let tCur = epoch;
+    let tI = this.t0;
+    if (this.tMult === 1) {
+      tCur = epoch % this.t0;
+    } else {
+      while (tCur >= tI) {
+        tCur -= tI;
+        tI *= this.tMult;
+      }
+    }
+    const cos = 0.5 * (1 + Math.cos((Math.PI * tCur) / tI));
+    return this.baseLrs.map((base) => this.etaMin + (base - this.etaMin) * cos);
+  }
+}
+
+export class ChainedScheduler<TGroup extends ParamGroupBase = ParamGroupBase> {
+  readonly schedulers: LRScheduler<TGroup>[];
+
+  constructor(schedulers: LRScheduler<TGroup>[]) {
+    this.schedulers = schedulers;
+  }
+
+  step(): void {
+    for (const sched of this.schedulers) {
+      sched.step();
+    }
+  }
+
+  getLastLr(): number[] {
+    return this.schedulers.length > 0 ? this.schedulers[this.schedulers.length - 1]!.getLastLr() : [];
+  }
+}

@@ -49,3 +49,56 @@ export class Embedding extends Module {
     });
   }
 }
+
+export interface EmbeddingBagLayerOptions extends TensorOptions {
+  mode?: 'sum' | 'mean' | 'max';
+  scaleGradByFreq?: boolean;
+  sparse?: boolean;
+  includeLastOffset?: boolean;
+  paddingIdx?: number;
+}
+
+export class EmbeddingBag extends Module {
+  readonly numEmbeddings: number;
+  readonly embeddingDim: number;
+  readonly mode: 'sum' | 'mean' | 'max';
+  readonly scaleGradByFreq: boolean;
+  readonly sparse: boolean;
+  readonly includeLastOffset: boolean;
+  readonly paddingIdx?: number;
+  readonly weight: Parameter;
+
+  constructor(numEmbeddings: number, embeddingDim: number, opts?: EmbeddingBagLayerOptions) {
+    super();
+    this.numEmbeddings = numEmbeddings;
+    this.embeddingDim = embeddingDim;
+    this.mode = opts?.mode ?? 'mean';
+    this.scaleGradByFreq = opts?.scaleGradByFreq ?? false;
+    this.sparse = opts?.sparse ?? false;
+    this.includeLastOffset = opts?.includeLastOffset ?? false;
+    this.paddingIdx = opts?.paddingIdx;
+    const factoryOpts: TensorOptions = { dtype: opts?.dtype, device: opts?.device };
+
+    const wInit = empty([numEmbeddings, embeddingDim], factoryOpts);
+    this.weight = new Parameter(wInit, true);
+    wInit.dispose();
+    normal_(this.weight, 0, 1);
+    if (this.paddingIdx !== undefined) {
+      noGrad(() => {
+        this.weight.indexPut_([this.paddingIdx!], 0);
+      });
+    }
+  }
+
+  forward(input: Tensor, offsets?: Tensor, perSampleWeights?: Tensor | null): Tensor {
+    return F.embeddingBag(input, this.weight, {
+      offsets,
+      scaleGradByFreq: this.scaleGradByFreq,
+      mode: this.mode,
+      sparse: this.sparse,
+      perSampleWeights,
+      includeLastOffset: this.includeLastOffset,
+      paddingIdx: this.paddingIdx,
+    });
+  }
+}

@@ -500,8 +500,289 @@ export function oneHot(input: Tensor, numClasses = -1): Tensor {
   return wrapTensor(native.fast.oneHot(input._native, numClasses));
 }
 
+export interface ConvTranspose3dOptions {
+  bias?: Tensor | null;
+  stride?: number | [number, number, number];
+  padding?: number | [number, number, number];
+  outputPadding?: number | [number, number, number];
+  groups?: number;
+  dilation?: number | [number, number, number];
+}
+
+export function convTranspose3d(
+  input: Tensor,
+  weight: Tensor,
+  opts?: ConvTranspose3dOptions
+): Tensor {
+  return wrapTensor(
+    native.fast.convTranspose3d(
+      input._native,
+      weight._native,
+      opts?.bias ? opts.bias._native : null,
+      triple(opts?.stride ?? 1),
+      triple(opts?.padding ?? 0),
+      triple(opts?.outputPadding ?? 0),
+      opts?.groups ?? 1,
+      triple(opts?.dilation ?? 1)
+    )
+  );
+}
+
+export interface MaxPool1dOptions {
+  stride?: number | [number];
+  padding?: number | [number];
+  dilation?: number | [number];
+  ceilMode?: boolean;
+}
+
+export function maxPool1d(
+  input: Tensor,
+  kernelSize: number | [number],
+  opts?: MaxPool1dOptions
+): Tensor {
+  return wrapTensor(
+    native.fast.maxPool1d(
+      input._native,
+      single(kernelSize),
+      opts?.stride !== undefined ? single(opts.stride) : null,
+      single(opts?.padding ?? 0),
+      single(opts?.dilation ?? 1),
+      opts?.ceilMode ?? false
+    )
+  );
+}
+
+export interface MaxPool3dOptions {
+  stride?: number | [number, number, number];
+  padding?: number | [number, number, number];
+  dilation?: number | [number, number, number];
+  ceilMode?: boolean;
+}
+
+export function maxPool3d(
+  input: Tensor,
+  kernelSize: number | [number, number, number],
+  opts?: MaxPool3dOptions
+): Tensor {
+  return wrapTensor(
+    native.fast.maxPool3d(
+      input._native,
+      triple(kernelSize),
+      opts?.stride !== undefined ? triple(opts.stride) : null,
+      triple(opts?.padding ?? 0),
+      triple(opts?.dilation ?? 1),
+      opts?.ceilMode ?? false
+    )
+  );
+}
+
+export interface AvgPool1dOptions {
+  stride?: number | [number];
+  padding?: number | [number];
+  ceilMode?: boolean;
+  countIncludePad?: boolean;
+}
+
+export function avgPool1d(
+  input: Tensor,
+  kernelSize: number | [number],
+  opts?: AvgPool1dOptions
+): Tensor {
+  return wrapTensor(
+    native.fast.avgPool1d(
+      input._native,
+      single(kernelSize),
+      opts?.stride !== undefined ? single(opts.stride) : null,
+      single(opts?.padding ?? 0),
+      opts?.ceilMode ?? false,
+      opts?.countIncludePad ?? true
+    )
+  );
+}
+
+export interface AvgPool3dOptions {
+  stride?: number | [number, number, number];
+  padding?: number | [number, number, number];
+  ceilMode?: boolean;
+  countIncludePad?: boolean;
+}
+
+export function avgPool3d(
+  input: Tensor,
+  kernelSize: number | [number, number, number],
+  opts?: AvgPool3dOptions
+): Tensor {
+  return wrapTensor(
+    native.fast.avgPool3d(
+      input._native,
+      triple(kernelSize),
+      opts?.stride !== undefined ? triple(opts.stride) : null,
+      triple(opts?.padding ?? 0),
+      opts?.ceilMode ?? false,
+      opts?.countIncludePad ?? true
+    )
+  );
+}
+
+export function adaptiveMaxPool2d(input: Tensor, outputSize: number | [number, number]): Tensor;
+export function adaptiveMaxPool2d(
+  input: Tensor,
+  outputSize: number | [number, number],
+  returnIndices: true
+): { output: Tensor; indices: Tensor };
+export function adaptiveMaxPool2d(
+  input: Tensor,
+  outputSize: number | [number, number],
+  returnIndices = false
+): Tensor | { output: Tensor; indices: Tensor } {
+  if (returnIndices) {
+    const res = native.fast.adaptiveMaxPool2d(input._native, pair(outputSize), true);
+    return { output: wrapTensor(res.output), indices: wrapTensor(res.indices) };
+  }
+  return wrapTensor(native.fast.adaptiveMaxPool2d(input._native, pair(outputSize), false));
+}
+
+export interface InstanceNormOptions {
+  runningMean?: Tensor | null;
+  runningVar?: Tensor | null;
+  weight?: Tensor | null;
+  bias?: Tensor | null;
+  useInputStats?: boolean;
+  momentum?: number;
+  eps?: number;
+}
+
+export function instanceNorm(input: Tensor, opts?: InstanceNormOptions): Tensor {
+  return wrapTensor(
+    native.fast.instanceNorm(
+      input._native,
+      opts?.weight ? opts.weight._native : null,
+      opts?.bias ? opts.bias._native : null,
+      opts?.runningMean ? opts.runningMean._native : null,
+      opts?.runningVar ? opts.runningVar._native : null,
+      opts?.useInputStats ?? true,
+      opts?.momentum ?? 0.1,
+      opts?.eps ?? 1e-5
+    )
+  );
+}
+
+export function bilinear(
+  input1: Tensor,
+  input2: Tensor,
+  weight: Tensor,
+  bias?: Tensor | null
+): Tensor {
+  return wrapTensor(
+    native.fast.bilinear(
+      input1._native,
+      input2._native,
+      weight._native,
+      bias ? bias._native : null
+    )
+  );
+}
+
+export function pixelShuffle(input: Tensor, upscaleFactor: number): Tensor {
+  return wrapTensor(native.fast.pixelShuffle(input._native, upscaleFactor));
+}
+
+export function pixelUnshuffle(input: Tensor, downscaleFactor: number): Tensor {
+  return wrapTensor(native.fast.pixelUnshuffle(input._native, downscaleFactor));
+}
+
+export interface UnfoldOptions {
+  dilation?: number | [number, number];
+  padding?: number | [number, number];
+  stride?: number | [number, number];
+}
+
+export function unfold(
+  input: Tensor,
+  kernelSize: number | [number, number],
+  opts?: UnfoldOptions
+): Tensor {
+  return wrapTensor(
+    native.fast.im2col(
+      input._native,
+      pair(kernelSize),
+      pair(opts?.dilation ?? 1),
+      pair(opts?.padding ?? 0),
+      pair(opts?.stride ?? 1)
+    )
+  );
+}
+
+export function fold(
+  input: Tensor,
+  outputSize: number | [number, number],
+  kernelSize: number | [number, number],
+  opts?: UnfoldOptions
+): Tensor {
+  return wrapTensor(
+    native.fast.col2im(
+      input._native,
+      pair(outputSize),
+      pair(kernelSize),
+      pair(opts?.dilation ?? 1),
+      pair(opts?.padding ?? 0),
+      pair(opts?.stride ?? 1)
+    )
+  );
+}
+
+export interface EmbeddingBagOptions {
+  offsets?: Tensor;
+  scaleGradByFreq?: boolean;
+  mode?: 'sum' | 'mean' | 'max';
+  sparse?: boolean;
+  perSampleWeights?: Tensor | null;
+  includeLastOffset?: boolean;
+  paddingIdx?: number;
+}
+
+export function embeddingBag(
+  input: Tensor,
+  weight: Tensor,
+  opts?: EmbeddingBagOptions
+): Tensor {
+  let offsets = opts?.offsets;
+  let ownedOffsets = false;
+  let flatInput = input;
+  let ownedFlat = false;
+  if (!offsets) {
+    if (input.ndim !== 2) {
+      throw new Error('embeddingBag requires offsets for 1D input or a 2D [B, L] input');
+    }
+    const [b, l] = input.shape;
+    offsets = wrapTensor(native.fast.arange(0, b! * l!, l!, { dtype: 'int64', device: input.device.toString() }));
+    ownedOffsets = true;
+    flatInput = input.reshape(-1);
+    ownedFlat = true;
+  }
+  try {
+    return wrapTensor(
+      native.fast.embeddingBag(
+        weight._native,
+        flatInput._native,
+        offsets._native,
+        opts?.scaleGradByFreq ?? false,
+        opts?.mode ?? 'mean',
+        opts?.sparse ?? false,
+        opts?.perSampleWeights ? opts.perSampleWeights._native : null,
+        opts?.includeLastOffset ?? false,
+        opts?.paddingIdx ?? null
+      )
+    );
+  } finally {
+    if (ownedOffsets) offsets.dispose();
+    if (ownedFlat) flatInput.dispose();
+  }
+}
+
 export const functional = {
   linear,
+  bilinear,
   relu,
   gelu,
   silu,
@@ -515,17 +796,29 @@ export const functional = {
   conv3d,
   convTranspose1d,
   convTranspose2d,
+  convTranspose3d,
   interpolate,
   pad,
   oneHot,
+  pixelShuffle,
+  pixelUnshuffle,
+  unfold,
+  fold,
+  maxPool1d,
   maxPool2d,
+  maxPool3d,
+  avgPool1d,
   avgPool2d,
+  avgPool3d,
   adaptiveAvgPool2d,
+  adaptiveMaxPool2d,
   layerNorm,
   rmsNorm,
   batchNorm,
+  instanceNorm,
   groupNorm,
   embedding,
+  embeddingBag,
   dropout,
   scaledDotProductAttention,
   crossEntropy,

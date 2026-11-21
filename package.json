@@ -36,6 +36,14 @@
     "./distributions": {
       "types": "./dist/src/distributions.d.ts",
       "import": "./dist/src/distributions.js"
+    },
+    "./func": {
+      "types": "./dist/src/func.d.ts",
+      "import": "./dist/src/func.js"
+    },
+    "./profiler": {
+      "types": "./dist/src/profiler.d.ts",
+      "import": "./dist/src/profiler.js"
     }
   },
   "engines": {

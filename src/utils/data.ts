@@ -217,10 +217,15 @@ function bufferToTypedArray(buffer: ArrayBuffer, dtype: DType): TypedArray {
     case 'float64':
     case 'complex128':
       return new Float64Array(buffer);
+    case 'float16':
+    case 'bfloat16':
+      return new Uint16Array(buffer);
     case 'int8':
       return new Int8Array(buffer);
     case 'uint8':
     case 'bool':
+    case 'float8_e4m3fn':
+    case 'float8_e5m2':
       return new Uint8Array(buffer);
     case 'int16':
       return new Int16Array(buffer);
@@ -228,8 +233,6 @@ function bufferToTypedArray(buffer: ArrayBuffer, dtype: DType): TypedArray {
       return new Int32Array(buffer);
     case 'int64':
       return new BigInt64Array(buffer);
-    default:
-      throw new Error(`Multi-worker TensorDataset does not support dtype '${dtype}' directly`);
   }
 }
 

@@ -70,6 +70,7 @@ const testFiles = [
   'dist/test/training_and_io.test.js',
   'dist/test/advanced_features.test.js',
   'dist/test/distributed_and_extras.test.js',
+  'dist/test/ecosystem_and_gaps.test.js',
 ].map((rel) => path.join(rootDir, rel));
 
 console.log(`[norch:asan] running native test suites under ASan+UBSan (${asanLib})...`);

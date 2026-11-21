@@ -1,3 +1,4 @@
+import type { GradScaler, GradScalerStateDict } from '../amp.js';
 import type { DeviceLike } from '../device.js';
 import type { Module } from '../nn/module.js';
 import type { LRScheduler, Optimizer, OptimizerStateDict, ReduceLROnPlateau } from '../optim/index.js';
@@ -8,6 +9,7 @@ export interface SaveCheckpointOptions {
   model: Module;
   optimizer?: Optimizer;
   scheduler?: LRScheduler | ReduceLROnPlateau;
+  scaler?: GradScaler;
   step?: number;
   epoch?: number;
   extra?: Record<string, unknown>;
@@ -17,6 +19,7 @@ export interface LoadCheckpointOptions {
   model: Module;
   optimizer?: Optimizer;
   scheduler?: LRScheduler | ReduceLROnPlateau;
+  scaler?: GradScaler;
   device?: DeviceLike;
   strict?: boolean;
 }
@@ -82,6 +85,9 @@ export function saveCheckpoint(filePath: string, opts: SaveCheckpointOptions): v
     if (opts.scheduler) {
       metaJson['scheduler'] = opts.scheduler.stateDict();
     }
+    if (opts.scaler) {
+      metaJson['scaler'] = opts.scaler.stateDict();
+    }
 
     saveSafetensors(filePath, packedTensors, {
       norch_checkpoint: JSON.stringify(metaJson),
@@ -138,6 +144,9 @@ export function loadCheckpoint(filePath: string, opts: LoadCheckpointOptions): L
 
     if (opts.scheduler && parsed['scheduler']) {
       opts.scheduler.loadStateDict(parsed['scheduler'] as never);
+    }
+    if (opts.scaler && parsed['scaler']) {
+      opts.scaler.loadStateDict(parsed['scaler'] as GradScalerStateDict);
     }
 
     return {

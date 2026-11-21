@@ -1,7 +1,9 @@
 import { noGrad } from './autograd.js';
 import { functional as F } from './functional.js';
+import { linalg } from './linalg.js';
 import { native, type NativeTensor } from './native.js';
 import { full, rand, randn, tensor as createTensor, where } from './ops.js';
+import { digamma, gammaln } from './special.js';
 import { Tensor, wrapTensor } from './tensor.js';
 
 const LOG_2_PI = Math.log(2 * Math.PI);
@@ -266,11 +268,414 @@ export class Categorical extends Distribution {
   }
 }
 
+export class Exponential extends Distribution {
+  readonly rate: Tensor;
+  readonly batchShape: number[];
+
+  constructor(rate: Tensor | number) {
+    super();
+    this.rate = toTensorParam(rate);
+    this.batchShape = this.rate.shape;
+  }
+
+  get mean(): Tensor {
+    return this.rate.pow(-1);
+  }
+
+  get variance(): Tensor {
+    return this.rate.pow(-2);
+  }
+
+  override rsample(sampleShape: number[] = []): Tensor {
+    const shape = [...sampleShape, ...this.batchShape];
+    const u = rand(shape, { dtype: this.rate.dtype, device: this.rate.device }).clamp(1e-7, 1 - 1e-7);
+    const out = u.neg().add(1).log().neg().div(this.rate);
+    u.dispose();
+    return out;
+  }
+
+  sample(sampleShape: number[] = []): Tensor {
+    return noGrad(() => this.rsample(sampleShape));
+  }
+
+  logProb(value: Tensor): Tensor {
+    return this.rate.log().sub(this.rate.mul(value));
+  }
+
+  entropy(): Tensor {
+    return this.rate.log().neg().add(1);
+  }
+}
+
+export class Poisson extends Distribution {
+  readonly rate: Tensor;
+  readonly batchShape: number[];
+
+  constructor(rate: Tensor | number) {
+    super();
+    this.rate = toTensorParam(rate);
+    this.batchShape = this.rate.shape;
+  }
+
+  get mean(): Tensor {
+    return this.rate;
+  }
+
+  get variance(): Tensor {
+    return this.rate;
+  }
+
+  sample(sampleShape: number[] = []): Tensor {
+    return noGrad(() => {
+      const expanded = this.rate.expand([...sampleShape, ...this.batchShape]);
+      return wrapTensor(native.callOpAuto('poisson', [expanded._native]) as NativeTensor);
+    });
+  }
+
+  logProb(value: Tensor): Tensor {
+    const v = value.to(this.rate.dtype);
+    return v.mul(this.rate.clamp(1e-37, null).log()).sub(this.rate).sub(gammaln(v.add(1)));
+  }
+
+  entropy(): Tensor {
+    throw new Error('Poisson does not have a closed-form entropy');
+  }
+}
+
+export class Gamma extends Distribution {
+  readonly concentration: Tensor;
+  readonly rate: Tensor;
+  readonly batchShape: number[];
+
+  constructor(concentration: Tensor | number, rate: Tensor | number) {
+    super();
+    const ref =
+      concentration instanceof Tensor ? concentration : rate instanceof Tensor ? rate : undefined;
+    this.concentration = toTensorParam(concentration, ref);
+    this.rate = toTensorParam(rate, this.concentration);
+    this.batchShape = broadcastShape(this.concentration.shape, this.rate.shape);
+  }
+
+  get mean(): Tensor {
+    return this.concentration.div(this.rate);
+  }
+
+  get variance(): Tensor {
+    return this.concentration.div(this.rate.pow(2));
+  }
+
+  override rsample(sampleShape: number[] = []): Tensor {
+    const shape = [...sampleShape, ...this.batchShape];
+    const alpha = this.concentration.expand(shape);
+    const standard = wrapTensor(native.callOpAuto('_standard_gamma', [alpha._native]) as NativeTensor);
+    return standard.div(this.rate);
+  }
+
+  sample(sampleShape: number[] = []): Tensor {
+    return noGrad(() => this.rsample(sampleShape));
+  }
+
+  logProb(value: Tensor): Tensor {
+    return this.concentration
+      .mul(this.rate.log())
+      .add(this.concentration.sub(1).mul(value.log()))
+      .sub(this.rate.mul(value))
+      .sub(gammaln(this.concentration));
+  }
+
+  entropy(): Tensor {
+    return this.concentration
+      .sub(this.rate.log())
+      .add(gammaln(this.concentration))
+      .add(this.concentration.neg().add(1).mul(digamma(this.concentration)));
+  }
+}
+
+export class Beta extends Distribution {
+  readonly concentration1: Tensor;
+  readonly concentration0: Tensor;
+  readonly batchShape: number[];
+
+  constructor(concentration1: Tensor | number, concentration0: Tensor | number) {
+    super();
+    const ref =
+      concentration1 instanceof Tensor
+        ? concentration1
+        : concentration0 instanceof Tensor
+          ? concentration0
+          : undefined;
+    this.concentration1 = toTensorParam(concentration1, ref);
+    this.concentration0 = toTensorParam(concentration0, this.concentration1);
+    this.batchShape = broadcastShape(this.concentration1.shape, this.concentration0.shape);
+  }
+
+  get mean(): Tensor {
+    return this.concentration1.div(this.concentration1.add(this.concentration0));
+  }
+
+  get variance(): Tensor {
+    const total = this.concentration1.add(this.concentration0);
+    return this.concentration1.mul(this.concentration0).div(total.pow(2).mul(total.add(1)));
+  }
+
+  override rsample(sampleShape: number[] = []): Tensor {
+    const shape = [...sampleShape, ...this.batchShape];
+    const g1 = wrapTensor(
+      native.callOpAuto('_standard_gamma', [this.concentration1.expand(shape)._native]) as NativeTensor
+    );
+    const g0 = wrapTensor(
+      native.callOpAuto('_standard_gamma', [this.concentration0.expand(shape)._native]) as NativeTensor
+    );
+    return g1.div(g1.add(g0));
+  }
+
+  sample(sampleShape: number[] = []): Tensor {
+    return noGrad(() => this.rsample(sampleShape));
+  }
+
+  logProb(value: Tensor): Tensor {
+    const a = this.concentration1;
+    const b = this.concentration0;
+    const logBeta = gammaln(a).add(gammaln(b)).sub(gammaln(a.add(b)));
+    return a
+      .sub(1)
+      .mul(value.log())
+      .add(b.sub(1).mul(value.neg().add(1).log()))
+      .sub(logBeta);
+  }
+
+  entropy(): Tensor {
+    const a = this.concentration1;
+    const b = this.concentration0;
+    const ab = a.add(b);
+    const logBeta = gammaln(a).add(gammaln(b)).sub(gammaln(ab));
+    return logBeta
+      .sub(a.sub(1).mul(digamma(a)))
+      .sub(b.sub(1).mul(digamma(b)))
+      .add(ab.sub(2).mul(digamma(ab)));
+  }
+}
+
+export class Dirichlet extends Distribution {
+  readonly concentration: Tensor;
+  readonly batchShape: number[];
+
+  constructor(concentration: Tensor) {
+    super();
+    if (concentration.ndim < 1) {
+      throw new Error('Dirichlet concentration must have at least 1 dimension');
+    }
+    this.concentration = concentration;
+    this.batchShape = concentration.shape.slice(0, -1);
+  }
+
+  get mean(): Tensor {
+    return this.concentration.div(this.concentration.sum(-1, true));
+  }
+
+  get variance(): Tensor {
+    const total = this.concentration.sum(-1, true);
+    return this.concentration.mul(total.sub(this.concentration)).div(total.pow(2).mul(total.add(1)));
+  }
+
+  override rsample(sampleShape: number[] = []): Tensor {
+    const shape = [...sampleShape, ...this.concentration.shape];
+    const g = wrapTensor(
+      native.callOpAuto('_standard_gamma', [this.concentration.expand(shape)._native]) as NativeTensor
+    );
+    return g.div(g.sum(-1, true));
+  }
+
+  sample(sampleShape: number[] = []): Tensor {
+    return noGrad(() => this.rsample(sampleShape));
+  }
+
+  logProb(value: Tensor): Tensor {
+    const a = this.concentration;
+    const term = value.log().mul(a.sub(1)).sum(-1);
+    const norm = gammaln(a.sum(-1)).sub(gammaln(a).sum(-1));
+    return term.add(norm);
+  }
+
+  entropy(): Tensor {
+    const a = this.concentration;
+    const a0 = a.sum(-1);
+    const k = a.size(-1);
+    const logB = gammaln(a).sum(-1).sub(gammaln(a0));
+    return logB.add(a0.sub(k).mul(digamma(a0))).sub(a.sub(1).mul(digamma(a)).sum(-1));
+  }
+}
+
+export interface MultivariateNormalOptions {
+  covarianceMatrix?: Tensor;
+  scaleTril?: Tensor;
+}
+
+export class MultivariateNormal extends Distribution {
+  readonly loc: Tensor;
+  readonly scaleTril: Tensor;
+  readonly batchShape: number[];
+  readonly eventDim: number;
+
+  constructor(loc: Tensor, opts: MultivariateNormalOptions) {
+    super();
+    if (loc.ndim < 1) {
+      throw new Error('MultivariateNormal loc must have at least 1 dimension');
+    }
+    this.loc = loc;
+    this.eventDim = loc.size(-1);
+    if (opts.scaleTril) {
+      this.scaleTril = opts.scaleTril;
+    } else if (opts.covarianceMatrix) {
+      this.scaleTril = linalg.cholesky(opts.covarianceMatrix);
+    } else {
+      throw new Error('MultivariateNormal requires either covarianceMatrix or scaleTril');
+    }
+    this.batchShape = broadcastShape(loc.shape.slice(0, -1), this.scaleTril.shape.slice(0, -2));
+  }
+
+  get mean(): Tensor {
+    return this.loc.expand([...this.batchShape, this.eventDim]);
+  }
+
+  get covarianceMatrix(): Tensor {
+    return this.scaleTril.matmul(this.scaleTril.transpose(-1, -2));
+  }
+
+  get variance(): Tensor {
+    return this.scaleTril.pow(2).sum(-1);
+  }
+
+  override rsample(sampleShape: number[] = []): Tensor {
+    const shape = [...sampleShape, ...this.batchShape, this.eventDim, 1];
+    const eps = randn(shape, { dtype: this.loc.dtype, device: this.loc.device });
+    const delta = this.scaleTril.matmul(eps).squeeze(-1);
+    eps.dispose();
+    return this.loc.add(delta);
+  }
+
+  sample(sampleShape: number[] = []): Tensor {
+    return noGrad(() => this.rsample(sampleShape));
+  }
+
+  logProb(value: Tensor): Tensor {
+    const diff = value.sub(this.loc).unsqueeze(-1);
+    const solved = wrapTensor(
+      native.callOp('aten::linalg_solve_triangular', '', [this.scaleTril._native, diff._native], {
+        upper: false,
+      }) as NativeTensor
+    ).squeeze(-1);
+    const maha = solved.pow(2).sum(-1);
+    const diag = wrapTensor(
+      native.callOpAuto('diagonal', [this.scaleTril._native, 0, -2, -1]) as NativeTensor
+    );
+    const halfLogDet = diag.log().sum(-1);
+    return maha.add(this.eventDim * LOG_2_PI).mul(-0.5).sub(halfLogDet);
+  }
+
+  entropy(): Tensor {
+    const diag = wrapTensor(
+      native.callOpAuto('diagonal', [this.scaleTril._native, 0, -2, -1]) as NativeTensor
+    );
+    const halfLogDet = diag.log().sum(-1);
+    return halfLogDet.add(0.5 * this.eventDim * (1 + LOG_2_PI));
+  }
+}
+
+/**
+ * Reinterprets `reinterpretedBatchNd` rightmost batch dimensions as event dimensions
+ * (matching `torch.distributions.Independent`).
+ */
+export class Independent extends Distribution {
+  readonly baseDist: Distribution;
+  readonly reinterpretedBatchNd: number;
+  readonly batchShape: number[];
+
+  constructor(baseDist: Distribution, reinterpretedBatchNd: number) {
+    super();
+    if (reinterpretedBatchNd < 0 || reinterpretedBatchNd > baseDist.batchShape.length) {
+      throw new RangeError(
+        `reinterpretedBatchNd (${reinterpretedBatchNd}) out of range for batchShape [${baseDist.batchShape.join(', ')}]`
+      );
+    }
+    this.baseDist = baseDist;
+    this.reinterpretedBatchNd = reinterpretedBatchNd;
+    this.batchShape = baseDist.batchShape.slice(0, baseDist.batchShape.length - reinterpretedBatchNd);
+  }
+
+  get mean(): Tensor {
+    return this.baseDist.mean;
+  }
+
+  get variance(): Tensor {
+    return this.baseDist.variance;
+  }
+
+  sample(sampleShape: number[] = []): Tensor {
+    return this.baseDist.sample(sampleShape);
+  }
+
+  override rsample(sampleShape: number[] = []): Tensor {
+    return this.baseDist.rsample(sampleShape);
+  }
+
+  private sumRightmost(t: Tensor): Tensor {
+    if (this.reinterpretedBatchNd === 0) return t;
+    const dims = Array.from({ length: this.reinterpretedBatchNd }, (_, i) => -(i + 1));
+    return t.sum(dims, false);
+  }
+
+  logProb(value: Tensor): Tensor {
+    return this.sumRightmost(this.baseDist.logProb(value));
+  }
+
+  entropy(): Tensor {
+    return this.sumRightmost(this.baseDist.entropy());
+  }
+}
+
 export function klDivergence(p: Distribution, q: Distribution): Tensor {
+  if (p instanceof Independent && q instanceof Independent) {
+    if (p.reinterpretedBatchNd !== q.reinterpretedBatchNd) {
+      throw new Error('Independent KL requires identical reinterpretedBatchNd');
+    }
+    const baseKl = klDivergence(p.baseDist, q.baseDist);
+    if (p.reinterpretedBatchNd === 0) return baseKl;
+    const dims = Array.from({ length: p.reinterpretedBatchNd }, (_, i) => -(i + 1));
+    return baseKl.sum(dims, false);
+  }
   if (p instanceof Normal && q instanceof Normal) {
     const varRatio = p.scale.div(q.scale).pow(2);
     const t1 = p.loc.sub(q.loc).div(q.scale).pow(2);
     return varRatio.add(t1).sub(1).sub(varRatio.log()).mul(0.5);
+  }
+  if (p instanceof Exponential && q instanceof Exponential) {
+    const rateRatio = q.rate.div(p.rate);
+    return rateRatio.sub(rateRatio.log()).sub(1);
+  }
+  if (p instanceof MultivariateNormal && q instanceof MultivariateNormal) {
+    const k = p.eventDim;
+    const pDiag = wrapTensor(
+      native.callOpAuto('diagonal', [p.scaleTril._native, 0, -2, -1]) as NativeTensor
+    );
+    const qDiag = wrapTensor(
+      native.callOpAuto('diagonal', [q.scaleTril._native, 0, -2, -1]) as NativeTensor
+    );
+    const logDetTerm = qDiag.log().sum(-1).sub(pDiag.log().sum(-1));
+    const m = wrapTensor(
+      native.callOp('aten::linalg_solve_triangular', '', [q.scaleTril._native, p.scaleTril._native], {
+        upper: false,
+      }) as NativeTensor
+    );
+    const traceTerm = m.pow(2).sum([-2, -1]);
+    const diff = q.loc.sub(p.loc).unsqueeze(-1);
+    const solvedDiff = wrapTensor(
+      native.callOp('aten::linalg_solve_triangular', '', [q.scaleTril._native, diff._native], {
+        upper: false,
+      }) as NativeTensor
+    ).squeeze(-1);
+    const quadTerm = solvedDiff.pow(2).sum(-1);
+    return traceTerm.add(quadTerm).sub(k).mul(0.5).add(logDetTerm);
   }
   if (p instanceof Uniform && q instanceof Uniform) {
     const outside = wrapTensor(
@@ -301,5 +706,12 @@ export const distributions = {
   Uniform,
   Bernoulli,
   Categorical,
+  Exponential,
+  Poisson,
+  Gamma,
+  Beta,
+  Dirichlet,
+  MultivariateNormal,
+  Independent,
   klDivergence,
 };

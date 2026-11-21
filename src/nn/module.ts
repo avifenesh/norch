@@ -1,4 +1,4 @@
-import { noGrad } from '../autograd.js';
+import { AutogradContext, AutogradFunction, isGradEnabled, noGrad } from '../autograd.js';
 import type { DType } from '../dtype.js';
 import type { DeviceLike } from '../device.js';
 import { untrackTensor } from '../memory.js';
@@ -16,6 +16,30 @@ export interface HookHandle extends Disposable {
 
 export type ForwardPreHook = (module: Module, inputs: unknown[]) => unknown[] | void;
 export type ForwardHook = (module: Module, inputs: unknown[], output: unknown) => unknown | void;
+export type FullBackwardHook = (
+  module: Module,
+  gradInput: (Tensor | null)[],
+  gradOutput: (Tensor | null)[]
+) => (Tensor | null)[] | void;
+
+class BackwardHookPass extends AutogradFunction {
+  static forward(
+    ctx: AutogradContext,
+    onBackward: (grads: (Tensor | null)[]) => (Tensor | null)[],
+    ...tensors: Tensor[]
+  ): Tensor | Tensor[] {
+    ctx['onBackward'] = onBackward;
+    ctx['count'] = tensors.length;
+    const views = tensors.map((t) => t.view(t.shape));
+    return views.length === 1 ? views[0]! : views;
+  }
+
+  static backward(ctx: AutogradContext, ...gradOutputs: (Tensor | null)[]): (Tensor | null)[] {
+    const onBackward = ctx['onBackward'] as (grads: (Tensor | null)[]) => (Tensor | null)[];
+    const modified = onBackward(gradOutputs);
+    return [null, ...modified];
+  }
+}
 
 export abstract class Module implements Disposable {
   protected readonly _parameters = new Map<string, Parameter | null>();
@@ -23,6 +47,7 @@ export abstract class Module implements Disposable {
   protected readonly _modules = new Map<string, Module | null>();
   private readonly _forwardPreHooks = new Map<number, ForwardPreHook>();
   private readonly _forwardHooks = new Map<number, ForwardHook>();
+  private readonly _backwardHooks = new Map<number, FullBackwardHook>();
   private _nextHookId = 1;
   training = true;
 
@@ -46,6 +71,15 @@ export abstract class Module implements Disposable {
     return { remove, [Symbol.dispose]: remove };
   }
 
+  registerFullBackwardHook(hook: FullBackwardHook): HookHandle {
+    const id = this._nextHookId++;
+    this._backwardHooks.set(id, hook);
+    const remove = (): void => {
+      this._backwardHooks.delete(id);
+    };
+    return { remove, [Symbol.dispose]: remove };
+  }
+
   call(...args: unknown[]): unknown {
     let inputs = args;
     for (const hook of this._forwardPreHooks.values()) {
@@ -54,11 +88,65 @@ export abstract class Module implements Disposable {
         inputs = modified;
       }
     }
+
+    const hasBwdHooks = this._backwardHooks.size > 0 && isGradEnabled();
+    let capturedGradOutput: (Tensor | null)[] = [];
+
+    if (hasBwdHooks) {
+      const inputIndices: number[] = [];
+      const inputTensors: Tensor[] = [];
+      inputs.forEach((arg, idx) => {
+        if (arg instanceof Tensor && arg.requiresGrad) {
+          inputIndices.push(idx);
+          inputTensors.push(arg);
+        }
+      });
+
+      if (inputTensors.length > 0) {
+        const hookedIn = BackwardHookPass.apply(
+          (gradInputs: (Tensor | null)[]) => {
+            let curGradIn = gradInputs;
+            for (const hook of this._backwardHooks.values()) {
+              const modified = hook(this, curGradIn, capturedGradOutput);
+              if (modified !== undefined) {
+                curGradIn = modified;
+              }
+            }
+            return curGradIn;
+          },
+          ...inputTensors
+        );
+        const wrappedList = Array.isArray(hookedIn) ? hookedIn : [hookedIn as Tensor];
+        inputs = [...inputs];
+        inputIndices.forEach((origIdx, i) => {
+          inputs[origIdx] = wrappedList[i]!;
+        });
+      }
+    }
+
     let output = this.forward(...inputs);
     for (const hook of this._forwardHooks.values()) {
       const modified = hook(this, inputs, output);
       if (modified !== undefined) {
         output = modified;
+      }
+    }
+
+    if (hasBwdHooks) {
+      if (output instanceof Tensor && output.requiresGrad) {
+        const hookedOut = BackwardHookPass.apply(
+          (gradOutputs: (Tensor | null)[]) => {
+            capturedGradOutput = gradOutputs;
+            if (!inputs.some((a) => a instanceof Tensor && a.requiresGrad)) {
+              for (const hook of this._backwardHooks.values()) {
+                hook(this, [], gradOutputs);
+              }
+            }
+            return gradOutputs;
+          },
+          output
+        );
+        output = hookedOut;
       }
     }
     return output;

@@ -56,3 +56,47 @@ export class Linear extends Module {
     return F.linear(input, this.weight, this.bias);
   }
 }
+
+export class Bilinear extends Module {
+  readonly in1Features: number;
+  readonly in2Features: number;
+  readonly outFeatures: number;
+  readonly weight: Parameter;
+  readonly bias: Parameter | null;
+
+  constructor(
+    in1Features: number,
+    in2Features: number,
+    outFeatures: number,
+    opts?: LinearOptions
+  ) {
+    super();
+    this.in1Features = in1Features;
+    this.in2Features = in2Features;
+    this.outFeatures = outFeatures;
+    const useBias = opts?.bias ?? true;
+    const factoryOpts: TensorOptions = { dtype: opts?.dtype, device: opts?.device };
+
+    const wInit = empty([outFeatures, in1Features, in2Features], factoryOpts);
+    this.weight = new Parameter(wInit, true);
+    wInit.dispose();
+
+    if (useBias) {
+      const bInit = empty([outFeatures], factoryOpts);
+      this.bias = new Parameter(bInit, true);
+      bInit.dispose();
+    } else {
+      this.bias = null;
+    }
+
+    const bound = 1 / Math.sqrt(in1Features);
+    uniform_(this.weight, -bound, bound);
+    if (this.bias) {
+      uniform_(this.bias, -bound, bound);
+    }
+  }
+
+  forward(input1: Tensor, input2: Tensor): Tensor {
+    return F.bilinear(input1, input2, this.weight, this.bias);
+  }
+}
