@@ -1,0 +1,45 @@
+{
+  "name": "norch",
+  "version": "0.1.0",
+  "description": "PyTorch equivalent for Node.js wrapping libtorch (c10, ATen, and C++ autograd) via C++23 Node-API",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./nn": {
+      "types": "./dist/src/nn/index.d.ts",
+      "import": "./dist/src/nn/index.js"
+    },
+    "./optim": {
+      "types": "./dist/src/optim/index.d.ts",
+      "import": "./dist/src/optim/index.js"
+    },
+    "./utils": {
+      "types": "./dist/src/utils/index.d.ts",
+      "import": "./dist/src/utils/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build:native": "node scripts/build-native.mjs",
+    "codegen": "node scripts/codegen.mjs",
+    "build:ts": "tsc -p tsconfig.json",
+    "build": "npm run build:native && npm run codegen && npm run build:ts",
+    "test": "node --test dist/test/*.test.js",
+    "test:cuda": "NORCH_TEST_CUDA=1 node --test dist/test/cuda.test.js",
+    "lint:cpp": "node scripts/lint-cpp.mjs"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  }
+}

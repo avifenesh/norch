@@ -1,0 +1,805 @@
+#include "norch/tensor_wrap.hpp"
+
+#include <ATen/ATen.h>
+#include <c10/core/AutogradState.h>
+#include <c10/core/ScalarType.h>
+#include <torch/csrc/autograd/autograd.h>
+#include <torch/csrc/autograd/function.h>
+
+#include <cstdint>
+#include <cstring>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include "norch/addon_state.hpp"
+#include "norch/convert.hpp"
+
+namespace norch {
+
+namespace {
+
+[[nodiscard]] c10::ScalarType TypedArrayToScalarType(Napi::Env env, napi_typedarray_type type) {
+  switch (type) {
+    case napi_float32_array:
+      return c10::ScalarType::Float;
+    case napi_float64_array:
+      return c10::ScalarType::Double;
+    case napi_int8_array:
+      return c10::ScalarType::Char;
+    case napi_uint8_array:
+    case napi_uint8_clamped_array:
+      return c10::ScalarType::Byte;
+    case napi_int16_array:
+      return c10::ScalarType::Short;
+    case napi_int32_array:
+      return c10::ScalarType::Int;
+    case napi_bigint64_array:
+      return c10::ScalarType::Long;
+    default:
+      throw Napi::TypeError::New(env, "Unsupported TypedArray element type for libtorch tensor");
+  }
+}
+
+[[nodiscard]] Napi::Value WrapBufferAsTypedArray(
+    Napi::Env env,
+    Napi::ArrayBuffer ab,
+    c10::ScalarType dtype,
+    std::size_t numel) {
+  auto to_val = [](napi_env e, napi_value v) -> Napi::Value { return {e, v}; };
+  switch (dtype) {
+    case c10::ScalarType::Float:
+      return to_val(env, Napi::Float32Array::New(env, numel, ab, 0));
+    case c10::ScalarType::Double:
+      return to_val(env, Napi::Float64Array::New(env, numel, ab, 0));
+    case c10::ScalarType::Char:
+      return to_val(env, Napi::Int8Array::New(env, numel, ab, 0));
+    case c10::ScalarType::Byte:
+    case c10::ScalarType::Bool:
+      return to_val(env, Napi::Uint8Array::New(env, numel, ab, 0));
+    case c10::ScalarType::Short:
+      return to_val(env, Napi::Int16Array::New(env, numel, ab, 0));
+    case c10::ScalarType::Int:
+      return to_val(env, Napi::Int32Array::New(env, numel, ab, 0));
+    case c10::ScalarType::Long:
+      return to_val(env, Napi::BigInt64Array::New(env, numel, ab, 0));
+    case c10::ScalarType::Half:
+    case c10::ScalarType::BFloat16:
+      return to_val(env, Napi::Uint16Array::New(env, numel, ab, 0));
+    default:
+      return to_val(env, Napi::Uint8Array::New(env, ab.ByteLength(), ab, 0));
+  }
+}
+
+struct ZeroCopyPin {
+  Napi::Reference<Napi::Value> ref;
+  std::thread::id owner_thread;
+  napi_threadsafe_function tsfn = nullptr;
+};
+
+Napi::Value FromTypedArray(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    if (info.Length() < 1 || !info[0].IsTypedArray()) {
+      throw Napi::TypeError::New(env, "fromTypedArray(typedArray, shape?, options?) expects a TypedArray");
+    }
+    const auto ta = info[0].As<Napi::TypedArray>();
+    const auto inferred_dtype = TypedArrayToScalarType(env, ta.TypedArrayType());
+
+    std::vector<std::int64_t> shape;
+    if (info.Length() >= 2 && !info[1].IsUndefined() && !info[1].IsNull()) {
+      shape = ParseIntArray(env, info[1]);
+    } else {
+      shape = {static_cast<std::int64_t>(ta.ElementLength())};
+    }
+
+    bool copy = true;
+    c10::ScalarType target_dtype = inferred_dtype;
+    c10::Device target_device(c10::kCPU);
+    bool requires_grad = false;
+
+    if (info.Length() >= 3 && info[2].IsObject()) {
+      const auto opts_obj = info[2].As<Napi::Object>();
+      if (opts_obj.Has("copy") && opts_obj.Get("copy").IsBoolean()) {
+        copy = opts_obj.Get("copy").As<Napi::Boolean>().Value();
+      }
+      if (opts_obj.Has("dtype") && !opts_obj.Get("dtype").IsUndefined() && !opts_obj.Get("dtype").IsNull()) {
+        target_dtype = ParseScalarType(env, opts_obj.Get("dtype"));
+      }
+      if (opts_obj.Has("device") && !opts_obj.Get("device").IsUndefined() && !opts_obj.Get("device").IsNull()) {
+        target_device = ParseDevice(env, opts_obj.Get("device"));
+      }
+      if (opts_obj.Has("requiresGrad") && opts_obj.Get("requiresGrad").IsBoolean()) {
+        requires_grad = opts_obj.Get("requiresGrad").As<Napi::Boolean>().Value();
+      }
+    }
+
+    // Validate shape matches buffer element count (supporting raw Uint16Array for fp16/bf16 or Uint8Array for raw bytes)
+    std::int64_t shape_numel = 1;
+    for (const auto d : shape) {
+      if (d < 0) {
+        throw Napi::RangeError::New(env, "Negative dimension in shape");
+      }
+      shape_numel *= d;
+    }
+
+    auto ab = ta.ArrayBuffer();
+    auto* raw_ptr = static_cast<std::uint8_t*>(ab.Data()) + ta.ByteOffset();
+    const std::size_t byte_len = ta.ByteLength();
+
+    const bool raw_reinterpret =
+        (ta.TypedArrayType() == napi_uint16_array &&
+         (target_dtype == c10::ScalarType::Half || target_dtype == c10::ScalarType::BFloat16)) ||
+        (ta.TypedArrayType() == napi_uint8_array &&
+         (target_dtype == c10::ScalarType::Bool || target_dtype == c10::ScalarType::Byte)) ||
+        (ta.TypedArrayType() == napi_uint8_array &&
+         static_cast<std::size_t>(shape_numel) * c10::elementSize(target_dtype) == byte_len);
+
+    const c10::ScalarType blob_dtype = raw_reinterpret ? target_dtype : inferred_dtype;
+    const std::size_t expected_bytes =
+        static_cast<std::size_t>(shape_numel) * c10::elementSize(blob_dtype);
+    if (expected_bytes != byte_len) {
+      throw Napi::RangeError::New(
+          env,
+          "TypedArray byte length (" + std::to_string(byte_len) +
+              ") does not match shape/dtype byte length (" + std::to_string(expected_bytes) + ")");
+    }
+
+    at::Tensor result;
+    const auto blob_opts = at::TensorOptions().dtype(blob_dtype).device(c10::kCPU);
+    if (!copy && target_dtype == blob_dtype && target_device.is_cpu()) {
+      auto& state = AddonState::Get(env);
+      auto* pin = new ZeroCopyPin();
+      pin->ref = Napi::Persistent(info[0]);
+      pin->owner_thread = state.js_thread_id();
+      // Create an unref'd TSFN so if the tensor is freed from a non-JS thread,
+      // the JS reference is still released safely on the JS thread.
+      napi_value resource_name = Napi::String::New(env, "norch.ZeroCopyPin");
+      const auto status = napi_create_threadsafe_function(
+          env,
+          nullptr,
+          nullptr,
+          resource_name,
+          0,
+          1,
+          nullptr,
+          nullptr,
+          nullptr,
+          [](napi_env /*cb_env*/, napi_value /*js_cb*/, void* /*ctx*/, void* data) {
+            auto* p = static_cast<ZeroCopyPin*>(data);
+            p->ref.Reset();
+            if (p->tsfn != nullptr) {
+              napi_release_threadsafe_function(p->tsfn, napi_tsfn_release);
+            }
+            delete p;
+          },
+          &pin->tsfn);
+      if (status != napi_ok) {
+        delete pin;
+        throw Napi::Error::New(env, "Failed to create threadsafe finalizer for zero-copy tensor");
+      }
+      napi_unref_threadsafe_function(env, pin->tsfn);
+
+      result = at::from_blob(
+          raw_ptr,
+          shape,
+          [pin](void* /*ptr*/) {
+            if (std::this_thread::get_id() == pin->owner_thread) {
+              pin->ref.Reset();
+              if (pin->tsfn != nullptr) {
+                napi_release_threadsafe_function(pin->tsfn, napi_tsfn_release);
+              }
+              delete pin;
+            } else if (pin->tsfn != nullptr) {
+              napi_call_threadsafe_function(pin->tsfn, pin, napi_tsfn_nonblocking);
+            }
+          },
+          blob_opts);
+    } else {
+      const at::Tensor view = at::from_blob(raw_ptr, shape, blob_opts);
+      result = view.to(at::TensorOptions().dtype(target_dtype).device(target_device),
+                       /*non_blocking=*/false,
+                       /*copy=*/true);
+    }
+
+    if (requires_grad) {
+      result.set_requires_grad(true);
+    }
+    return TensorWrap::NewInstance(env, std::move(result));
+  });
+}
+
+}  // namespace
+
+Napi::Function TensorWrap::Init(Napi::Env env, Napi::Object exports) {
+  Napi::Function func = DefineClass(
+      env,
+      "NativeTensor",
+      {
+          InstanceMethod("dispose", &TensorWrap::Dispose),
+          InstanceMethod("isDisposed", &TensorWrap::IsDisposedJs),
+          InstanceMethod("shape", &TensorWrap::Shape),
+          InstanceMethod("strides", &TensorWrap::Strides),
+          InstanceMethod("dim", &TensorWrap::Dim),
+          InstanceMethod("numel", &TensorWrap::Numel),
+          InstanceMethod("elementSize", &TensorWrap::ElementSize),
+          InstanceMethod("nbytes", &TensorWrap::Nbytes),
+          InstanceMethod("storageOffset", &TensorWrap::StorageOffset),
+          InstanceMethod("dtype", &TensorWrap::Dtype),
+          InstanceMethod("device", &TensorWrap::Device),
+          InstanceMethod("isContiguous", &TensorWrap::IsContiguous),
+          InstanceMethod("isCuda", &TensorWrap::IsCuda),
+          InstanceMethod("requiresGrad", &TensorWrap::RequiresGrad),
+          InstanceMethod("setRequiresGrad", &TensorWrap::SetRequiresGrad),
+          InstanceMethod("isLeaf", &TensorWrap::IsLeaf),
+          InstanceMethod("retainsGrad", &TensorWrap::RetainsGrad),
+          InstanceMethod("retainGrad", &TensorWrap::RetainGrad),
+          InstanceMethod("grad", &TensorWrap::Grad),
+          InstanceMethod("setGrad", &TensorWrap::SetGrad),
+          InstanceMethod("gradFnName", &TensorWrap::GradFnName),
+          InstanceMethod("dataPtr", &TensorWrap::DataPtr),
+          InstanceMethod("storagePtr", &TensorWrap::StoragePtr),
+          InstanceMethod("item", &TensorWrap::Item),
+          InstanceMethod("toTypedArray", &TensorWrap::ToTypedArray),
+          InstanceMethod("dataView", &TensorWrap::DataView),
+          InstanceMethod("copyFrom", &TensorWrap::CopyFrom),
+          InstanceMethod("detach", &TensorWrap::Detach),
+          InstanceMethod("detachInplace", &TensorWrap::DetachInplace),
+          InstanceMethod("clone", &TensorWrap::Clone),
+          InstanceMethod("contiguous", &TensorWrap::Contiguous),
+          InstanceMethod("to", &TensorWrap::To),
+          InstanceMethod("backward", &TensorWrap::Backward),
+          InstanceMethod("indexGet", &TensorWrap::IndexGet),
+          InstanceMethod("indexPut", &TensorWrap::IndexPut),
+          InstanceMethod("equal", &TensorWrap::Equal),
+          InstanceMethod("formatString", &TensorWrap::FormatString),
+      });
+
+  AddonState::Get(env).tensor_ctor = Napi::Persistent(func);
+  exports.Set("NativeTensor", func);
+  return func;
+}
+
+Napi::Object TensorWrap::NewInstance(Napi::Env env, at::Tensor tensor) {
+  auto& state = AddonState::Get(env);
+  auto obj = state.tensor_ctor.New({});
+  auto* wrap = Napi::ObjectWrap<TensorWrap>::Unwrap(obj);
+  wrap->SetTensor(env, std::move(tensor));
+  return obj;
+}
+
+bool TensorWrap::IsTensorWrap(Napi::Env env, const Napi::Value& val) {
+  return TryUnwrap(env, val) != nullptr;
+}
+
+TensorWrap* TensorWrap::TryUnwrap(Napi::Env env, const Napi::Value& val) {
+  if (!val.IsObject()) {
+    return nullptr;
+  }
+  const auto obj = val.As<Napi::Object>();
+  auto& state = AddonState::Get(env);
+  if (obj.InstanceOf(state.tensor_ctor.Value())) {
+    return Napi::ObjectWrap<TensorWrap>::Unwrap(obj);
+  }
+  if (obj.Has("_native")) {
+    const auto inner = obj.Get("_native");
+    if (inner.IsObject() && inner.As<Napi::Object>().InstanceOf(state.tensor_ctor.Value())) {
+      return Napi::ObjectWrap<TensorWrap>::Unwrap(inner.As<Napi::Object>());
+    }
+  }
+  return nullptr;
+}
+
+const at::Tensor& TensorWrap::UnwrapTensor(Napi::Env env, const Napi::Value& val) {
+  auto* wrap = TryUnwrap(env, val);
+  if (wrap == nullptr) {
+    throw Napi::TypeError::New(env, "Expected a Tensor");
+  }
+  if (wrap->IsDisposed()) {
+    throw Napi::Error::New(env, "Tensor has been disposed");
+  }
+  return wrap->tensor();
+}
+
+at::Tensor& TensorWrap::UnwrapMutableTensor(Napi::Env env, const Napi::Value& val) {
+  auto* wrap = TryUnwrap(env, val);
+  if (wrap == nullptr) {
+    throw Napi::TypeError::New(env, "Expected a Tensor");
+  }
+  if (wrap->IsDisposed()) {
+    throw Napi::Error::New(env, "Tensor has been disposed");
+  }
+  return wrap->mutable_tensor();
+}
+
+TensorWrap::TensorWrap(const Napi::CallbackInfo& info)
+    : Napi::ObjectWrap<TensorWrap>(info), env_(info.Env()) {}
+
+TensorWrap::~TensorWrap() {
+  if (!disposed_ && env_ != nullptr) {
+    const Napi::Env env(env_);
+    if (env.GetInstanceData<AddonState>() != nullptr) {
+      ReleaseTracking(env);
+    }
+  }
+  tensor_.reset();
+  disposed_ = true;
+}
+
+void TensorWrap::SetTensor(Napi::Env env, at::Tensor tensor) {
+  if (!disposed_) {
+    ReleaseTracking(env);
+  }
+  env_ = env;
+  tensor_ = std::move(tensor);
+  disposed_ = !tensor_.defined();
+  if (!disposed_) {
+    auto& state = AddonState::Get(env);
+    state.live_tensors += 1;
+    if (tensor_.has_storage()) {
+      const auto& storage = tensor_.storage();
+      tracked_storage_ = storage.unsafeGetStorageImpl();
+      state.TrackStorage(env, tracked_storage_, static_cast<std::int64_t>(storage.nbytes()));
+    }
+  }
+}
+
+void TensorWrap::ReleaseTracking(Napi::Env env) {
+  auto* state = env.GetInstanceData<AddonState>();
+  if (state == nullptr) {
+    tracked_storage_ = nullptr;
+    return;
+  }
+  if (!disposed_ && state->live_tensors > 0) {
+    state->live_tensors -= 1;
+  }
+  if (tracked_storage_ != nullptr) {
+    state->UntrackStorage(env, tracked_storage_);
+    tracked_storage_ = nullptr;
+  }
+}
+
+void TensorWrap::DisposeInternal(Napi::Env env) {
+  if (disposed_) {
+    return;
+  }
+  ReleaseTracking(env);
+  tensor_.reset();
+  disposed_ = true;
+}
+
+const at::Tensor& TensorWrap::tensor() const {
+  if (disposed_ || !tensor_.defined()) {
+    throw std::runtime_error("Tensor has been disposed");
+  }
+  return tensor_;
+}
+
+at::Tensor& TensorWrap::mutable_tensor() {
+  if (disposed_ || !tensor_.defined()) {
+    throw std::runtime_error("Tensor has been disposed");
+  }
+  return tensor_;
+}
+
+Napi::Value TensorWrap::Dispose(const Napi::CallbackInfo& info) {
+  DisposeInternal(info.Env());
+  return info.Env().Undefined();
+}
+
+Napi::Value TensorWrap::IsDisposedJs(const Napi::CallbackInfo& info) {
+  return Napi::Boolean::New(info.Env(), disposed_);
+}
+
+Napi::Value TensorWrap::Shape(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto sizes = tensor().sizes();
+    auto arr = Napi::Array::New(env, sizes.size());
+    for (std::size_t i = 0; i < sizes.size(); ++i) {
+      arr.Set(static_cast<std::uint32_t>(i), Napi::Number::New(env, static_cast<double>(sizes[i])));
+    }
+    return arr;
+  });
+}
+
+Napi::Value TensorWrap::Strides(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto strides = tensor().strides();
+    auto arr = Napi::Array::New(env, strides.size());
+    for (std::size_t i = 0; i < strides.size(); ++i) {
+      arr.Set(
+          static_cast<std::uint32_t>(i), Napi::Number::New(env, static_cast<double>(strides[i])));
+    }
+    return arr;
+  });
+}
+
+Napi::Value TensorWrap::Dim(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Number::New(env, static_cast<double>(tensor().dim()));
+  });
+}
+
+Napi::Value TensorWrap::Numel(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Number::New(env, static_cast<double>(tensor().numel()));
+  });
+}
+
+Napi::Value TensorWrap::ElementSize(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Number::New(env, static_cast<double>(tensor().element_size()));
+  });
+}
+
+Napi::Value TensorWrap::Nbytes(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Number::New(env, static_cast<double>(tensor().nbytes()));
+  });
+}
+
+Napi::Value TensorWrap::StorageOffset(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Number::New(env, static_cast<double>(tensor().storage_offset()));
+  });
+}
+
+Napi::Value TensorWrap::Dtype(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::String::New(env, ScalarTypeToString(tensor().scalar_type()));
+  });
+}
+
+Napi::Value TensorWrap::Device(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::String::New(env, DeviceToString(tensor().device()));
+  });
+}
+
+Napi::Value TensorWrap::IsContiguous(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Boolean::New(env, tensor().is_contiguous());
+  });
+}
+
+Napi::Value TensorWrap::IsCuda(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Boolean::New(env, tensor().is_cuda());
+  });
+}
+
+Napi::Value TensorWrap::RequiresGrad(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Boolean::New(env, tensor().requires_grad());
+  });
+}
+
+Napi::Value TensorWrap::SetRequiresGrad(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const bool req = info.Length() < 1 || info[0].ToBoolean().Value();
+    mutable_tensor().set_requires_grad(req);
+    return info.This();
+  });
+}
+
+Napi::Value TensorWrap::IsLeaf(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Boolean::New(env, tensor().is_leaf());
+  });
+}
+
+Napi::Value TensorWrap::RetainsGrad(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return Napi::Boolean::New(env, tensor().retains_grad());
+  });
+}
+
+Napi::Value TensorWrap::RetainGrad(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    mutable_tensor().retain_grad();
+    return env.Undefined();
+  });
+}
+
+Napi::Value TensorWrap::Grad(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& g = tensor().grad();
+    if (!g.defined()) {
+      return env.Null();
+    }
+    return NewInstance(env, g);
+  });
+}
+
+Napi::Value TensorWrap::SetGrad(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    if (info.Length() < 1 || info[0].IsNull() || info[0].IsUndefined()) {
+      mutable_tensor().mutable_grad() = at::Tensor();
+    } else {
+      mutable_tensor().mutable_grad() = UnwrapTensor(env, info[0]);
+    }
+    return env.Undefined();
+  });
+}
+
+Napi::Value TensorWrap::GradFnName(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& fn = tensor().grad_fn();
+    if (!fn) {
+      return env.Null();
+    }
+    return Napi::String::New(env, fn->name());
+  });
+}
+
+Napi::Value TensorWrap::DataPtr(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto addr = reinterpret_cast<std::uintptr_t>(tensor().data_ptr());
+    return Napi::BigInt::New(env, static_cast<std::uint64_t>(addr));
+  });
+}
+
+Napi::Value TensorWrap::StoragePtr(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& t = tensor();
+    if (!t.has_storage()) {
+      return Napi::BigInt::New(env, static_cast<std::uint64_t>(0));
+    }
+    const auto addr = reinterpret_cast<std::uintptr_t>(t.storage().unsafeGetStorageImpl());
+    return Napi::BigInt::New(env, static_cast<std::uint64_t>(addr));
+  });
+}
+
+Napi::Value TensorWrap::Item(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return ScalarToJs(env, tensor().item());
+  });
+}
+
+Napi::Value TensorWrap::ToTypedArray(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    at::Tensor cpu_contig = tensor().detach().to(c10::kCPU).contiguous();
+    const std::size_t nbytes = cpu_contig.nbytes();
+    const auto numel = static_cast<std::size_t>(cpu_contig.numel());
+    auto ab = Napi::ArrayBuffer::New(env, nbytes);
+    if (nbytes > 0) {
+      std::memcpy(ab.Data(), cpu_contig.data_ptr(), nbytes);
+    }
+    return WrapBufferAsTypedArray(env, ab, cpu_contig.scalar_type(), numel);
+  });
+}
+
+Napi::Value TensorWrap::DataView(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& t = tensor();
+    if (!t.device().is_cpu()) {
+      throw Napi::Error::New(
+          env, "dataView() requires a CPU tensor (call .cpu() or .toTypedArray() instead)");
+    }
+    if (!t.is_contiguous()) {
+      throw Napi::Error::New(
+          env, "dataView() requires a contiguous tensor (call .contiguous() first)");
+    }
+    const std::size_t nbytes = t.nbytes();
+    const auto numel = static_cast<std::size_t>(t.numel());
+    if (nbytes == 0) {
+      auto ab = Napi::ArrayBuffer::New(env, 0);
+      return WrapBufferAsTypedArray(env, ab, t.scalar_type(), 0);
+    }
+    // Keep a refcounted copy of the Tensor alive until V8 collects the ArrayBuffer
+    auto* holder = new at::Tensor(t.detach());
+    auto ab = Napi::ArrayBuffer::New(
+        env,
+        holder->data_ptr(),
+        nbytes,
+        [](Napi::Env /*cb_env*/, void* /*data*/, at::Tensor* h) { delete h; },
+        holder);
+    return WrapBufferAsTypedArray(env, ab, t.scalar_type(), numel);
+  });
+}
+
+Napi::Value TensorWrap::CopyFrom(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    if (info.Length() < 1) {
+      throw Napi::TypeError::New(env, "copyFrom(src, nonBlocking?) expects a source tensor");
+    }
+    const auto& src = UnwrapTensor(env, info[0]);
+    const bool non_blocking = info.Length() >= 2 && info[1].ToBoolean().Value();
+    mutable_tensor().copy_(src, non_blocking);
+    return info.This();
+  });
+}
+
+Napi::Value TensorWrap::Detach(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return NewInstance(env, tensor().detach());
+  });
+}
+
+Napi::Value TensorWrap::DetachInplace(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    mutable_tensor().detach_();
+    return info.This();
+  });
+}
+
+Napi::Value TensorWrap::Clone(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    return NewInstance(env, tensor().clone());
+  });
+}
+
+Napi::Value TensorWrap::Contiguous(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    c10::MemoryFormat mf = c10::MemoryFormat::Contiguous;
+    if (info.Length() >= 1 && !info[0].IsUndefined() && !info[0].IsNull()) {
+      mf = ParseMemoryFormat(env, info[0]);
+    }
+    return NewInstance(env, tensor().contiguous(mf));
+  });
+}
+
+Napi::Value TensorWrap::To(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const auto& t = tensor();
+    c10::Device device = t.device();
+    c10::ScalarType dtype = t.scalar_type();
+    bool non_blocking = false;
+    bool copy = false;
+    std::optional<c10::MemoryFormat> mem_format = std::nullopt;
+
+    if (info.Length() >= 1 && info[0].IsObject()) {
+      const auto obj = info[0].As<Napi::Object>();
+      if (obj.Has("device") && !obj.Get("device").IsUndefined() && !obj.Get("device").IsNull()) {
+        device = ParseDevice(env, obj.Get("device"));
+      }
+      if (obj.Has("dtype") && !obj.Get("dtype").IsUndefined() && !obj.Get("dtype").IsNull()) {
+        dtype = ParseScalarType(env, obj.Get("dtype"));
+      }
+      if (obj.Has("nonBlocking") && obj.Get("nonBlocking").IsBoolean()) {
+        non_blocking = obj.Get("nonBlocking").As<Napi::Boolean>().Value();
+      }
+      if (obj.Has("copy") && obj.Get("copy").IsBoolean()) {
+        copy = obj.Get("copy").As<Napi::Boolean>().Value();
+      }
+      if (obj.Has("memoryFormat") && !obj.Get("memoryFormat").IsUndefined() &&
+          !obj.Get("memoryFormat").IsNull()) {
+        mem_format = ParseMemoryFormat(env, obj.Get("memoryFormat"));
+      }
+    }
+    return NewInstance(env, t.to(device, dtype, non_blocking, copy, mem_format));
+  });
+}
+
+Napi::Value TensorWrap::Backward(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    torch::autograd::variable_list grad_tensors;
+    std::optional<bool> retain_graph = std::nullopt;
+    bool create_graph = false;
+    torch::autograd::variable_list inputs;
+
+    if (info.Length() >= 1 && !info[0].IsUndefined() && !info[0].IsNull()) {
+      grad_tensors.push_back(UnwrapTensor(env, info[0]));
+    }
+    if (info.Length() >= 2 && info[1].IsObject()) {
+      const auto opts = info[1].As<Napi::Object>();
+      if (opts.Has("retainGraph") && opts.Get("retainGraph").IsBoolean()) {
+        retain_graph = opts.Get("retainGraph").As<Napi::Boolean>().Value();
+      }
+      if (opts.Has("createGraph") && opts.Get("createGraph").IsBoolean()) {
+        create_graph = opts.Get("createGraph").As<Napi::Boolean>().Value();
+      }
+      if (opts.Has("inputs") && opts.Get("inputs").IsArray()) {
+        inputs = ParseTensorList(env, opts.Get("inputs"));
+      }
+    }
+
+    auto& state = AddonState::Get(env);
+    const bool force_single_thread = state.custom_autograd_nodes_alive.load() > 0;
+    auto& tls = c10::AutogradState::get_tls_state();
+    const bool prev_mt = tls.get_multithreading_enabled();
+    if (force_single_thread) {
+      tls.set_multithreading_enabled(false);
+    }
+    struct RestoreMt {
+      bool prev;
+      bool active;
+      RestoreMt(bool p, bool a) noexcept : prev(p), active(a) {}
+      ~RestoreMt() {
+        if (active) {
+          c10::AutogradState::get_tls_state().set_multithreading_enabled(prev);
+        }
+      }
+      RestoreMt(const RestoreMt&) = delete;
+      RestoreMt& operator=(const RestoreMt&) = delete;
+      RestoreMt(RestoreMt&&) = delete;
+      RestoreMt& operator=(RestoreMt&&) = delete;
+    } const guard(prev_mt, force_single_thread);
+
+    torch::autograd::backward({tensor()}, grad_tensors, retain_graph, create_graph, inputs);
+    return env.Undefined();
+  });
+}
+
+Napi::Value TensorWrap::IndexGet(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    if (info.Length() < 1) {
+      throw Napi::TypeError::New(env, "indexGet(indices) expects an Array of indices");
+    }
+    const auto indices = ParseTensorIndices(env, info[0]);
+    return NewInstance(env, tensor().index(indices));
+  });
+}
+
+Napi::Value TensorWrap::IndexPut(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    if (info.Length() < 2) {
+      throw Napi::TypeError::New(env, "indexPut(indices, value) expects >= 2 args");
+    }
+    const auto indices = ParseTensorIndices(env, info[0]);
+    if (IsTensorWrap(env, info[1])) {
+      mutable_tensor().index_put_(indices, UnwrapTensor(env, info[1]));
+    } else {
+      mutable_tensor().index_put_(indices, ParseScalar(env, info[1]));
+    }
+    return info.This();
+  });
+}
+
+Napi::Value TensorWrap::Equal(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    if (info.Length() < 1) {
+      throw Napi::TypeError::New(env, "equal(other) expects a Tensor");
+    }
+    return Napi::Boolean::New(env, tensor().equal(UnwrapTensor(env, info[0])));
+  });
+}
+
+Napi::Value TensorWrap::FormatString(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    std::ostringstream oss;
+    oss << tensor();
+    return Napi::String::New(env, oss.str());
+  });
+}
+
+void RegisterTensorHelpers(Napi::Env env, Napi::Object exports) {
+  exports.Set("fromTypedArray", Napi::Function::New(env, FromTypedArray));
+}
+
+}  // namespace norch
