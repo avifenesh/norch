@@ -19,6 +19,7 @@
 #include <optional>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -30,6 +31,38 @@
 namespace norch {
 
 namespace {
+
+// PyTorch <= 2.7 uses std::shared_ptr<Node>; PyTorch >= 2.9 uses c10::intrusive_ptr<Node>.
+constexpr bool kAutogradNodeIsIntrusive =
+    std::is_base_of_v<c10::intrusive_ptr_target, torch::autograd::Node>;
+
+template <typename T>
+using AutogradNodePtr = std::conditional_t<
+    kAutogradNodeIsIntrusive,
+    c10::intrusive_ptr<T>,
+    std::shared_ptr<T>>;
+
+template <typename T, typename... Args>
+[[nodiscard]] AutogradNodePtr<T> MakeAutogradNode(Args&&... args) {
+  if constexpr (kAutogradNodeIsIntrusive) {
+    return c10::make_intrusive<T>(std::forward<Args>(args)...);
+  } else {
+    return std::make_shared<T>(std::forward<Args>(args)...);
+  }
+}
+
+template <typename NodeT>
+[[nodiscard]] AutogradNodePtr<torch::autograd::Node> SelfNodePtr(NodeT* self) {
+  if constexpr (kAutogradNodeIsIntrusive) {
+    auto self_ptr =
+        c10::intrusive_ptr<torch::autograd::Node>::unsafe_reclaim_from_nonowning(self);
+    auto guard = self_ptr;
+    self_ptr.release();
+    return guard;
+  } else {
+    return self->shared_from_this();
+  }
+}
 
 [[nodiscard]] std::vector<std::unique_ptr<c10::InferenceMode>>& InferenceModeStack() {
   static thread_local std::vector<std::unique_ptr<c10::InferenceMode>> stack;
@@ -139,10 +172,7 @@ class JsAutogradNode final : public torch::autograd::Node {
 
     // Unpack saved variables (runs libtorch version-counter check)
     auto saved_arr = Napi::Array::New(env, saved_vars_.size());
-    auto self_ptr = c10::intrusive_ptr<torch::autograd::Node>::unsafe_reclaim_from_nonowning(this);
-    // Keep intrusive refcount balanced: unsafe_reclaim does not increment, so copy + release!
-    auto self_guard = self_ptr;
-    self_ptr.release();
+    auto self_guard = SelfNodePtr(this);
 
     for (std::size_t i = 0; i < saved_vars_.size(); ++i) {
       auto unpacked = saved_vars_[i].unpack(self_guard);
@@ -436,9 +466,9 @@ Napi::Value ApplyCustomAutograd(const Napi::CallbackInfo& info) {
     const bool is_executable =
         c10::GradMode::is_enabled() && torch::autograd::any_variable_requires_grad(input_vars);
 
-    c10::intrusive_ptr<JsAutogradNode> node;
+    AutogradNodePtr<JsAutogradNode> node;
     if (is_executable) {
-      node = c10::make_intrusive<JsAutogradNode>(
+      node = MakeAutogradNode<JsAutogradNode>(
           op_name + "Backward", env, &state, backward_fn, ctx_obj, input_vars.size());
       node->set_next_edges(torch::autograd::collect_next_edges(input_vars));
       node->clear_input_metadata();
@@ -499,14 +529,15 @@ Napi::Value ApplyCustomAutograd(const Napi::CallbackInfo& info) {
       return x.view_as(x);
     };
 
-    c10::intrusive_ptr<torch::autograd::Node> attached_node;
+    AutogradNodePtr<torch::autograd::Node> attached_node;
     const std::unordered_set<at::TensorImpl*> empty_set;
     auto wrapped_outputs = torch::autograd::_wrap_outputs(
         input_vars,
         non_diff,
         dirty_inputs,
         raw_outputs,
-        is_executable ? c10::intrusive_ptr<torch::autograd::Node>(node) : nullptr,
+        is_executable ? AutogradNodePtr<torch::autograd::Node>(node)
+                      : AutogradNodePtr<torch::autograd::Node>{},
         jvp_fn,
         empty_set,
         view_as_self_fn,

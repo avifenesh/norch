@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { pathToFileURL } from 'node:url';
 
 export const DEFAULT_LIBTORCH_VERSION = '2.7.0';
 
@@ -168,7 +169,7 @@ export async function downloadLibTorch(opts) {
   return plan;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const opts = parseArgs(process.argv.slice(2));
   await downloadLibTorch(opts);
 }

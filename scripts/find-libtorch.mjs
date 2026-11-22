@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 function isValidLibTorchDir(dir) {
   if (!dir) return false;
@@ -11,7 +12,8 @@ function isValidLibTorchDir(dir) {
   return (
     fs.existsSync(path.join(libDir, 'libtorch.so')) ||
     fs.existsSync(path.join(libDir, 'libtorch.dylib')) ||
-    fs.existsSync(path.join(libDir, 'torch.dll'))
+    fs.existsSync(path.join(libDir, 'torch.dll')) ||
+    fs.existsSync(path.join(libDir, 'torch_cpu.dll'))
   );
 }
 
@@ -75,6 +77,6 @@ export function findLibTorchDir() {
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   console.log(findLibTorchDir());
 }

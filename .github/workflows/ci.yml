@@ -18,7 +18,7 @@ jobs:
             platform_key: linux-x64
             backend: cpu
             run_lint: true
-          - os: macos-14
+          - os: macos-latest
             platform_key: darwin-arm64
             backend: mps
             run_lint: false
