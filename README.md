@@ -1,5 +1,7 @@
 # norch
 
+[![CI](https://github.com/avifenesh/norch/actions/workflows/ci.yml/badge.svg)](https://github.com/avifenesh/norch/actions/workflows/ci.yml)
+
 PyTorch equivalent for Node.js backed directly by `libtorch` (`c10`, `ATen`, `torch::autograd`, `c10d`, Kineto profiler, DLPack, and `torch::jit` tracer & `GraphExecutor`) through a C++23 Node-API addon — **zero Python required**.
 
 ## Architecture

@@ -2,6 +2,14 @@
   "name": "norch",
   "version": "0.1.0",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/avifenesh/norch.git"
+  },
+  "homepage": "https://github.com/avifenesh/norch#readme",
+  "bugs": {
+    "url": "https://github.com/avifenesh/norch/issues"
+  },
   "description": "PyTorch equivalent for Node.js wrapping libtorch (c10, ATen, torch::autograd, c10d, Kineto, and torch::jit) via C++23 Node-API",
   "keywords": [
     "pytorch",
