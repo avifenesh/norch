@@ -20,6 +20,35 @@ namespace norch {
 
 namespace {
 
+template <typename LoaderT>
+[[nodiscard]] std::unique_ptr<LoaderT> MakeAotiLoader(
+    const std::string& pkg_path,
+    const std::string& model_name,
+    c10::DeviceIndex device_index) {
+  if constexpr (std::is_constructible_v<
+                    LoaderT,
+                    const std::string&,
+                    const std::string&,
+                    bool,
+                    std::size_t,
+                    c10::DeviceIndex>) {
+    return std::make_unique<LoaderT>(
+        pkg_path, model_name, /*run_single_threaded=*/false, std::size_t{1}, device_index);
+  } else if constexpr (std::is_constructible_v<
+                           LoaderT,
+                           const std::string&,
+                           const std::string&,
+                           bool,
+                           std::size_t>) {
+    (void)device_index;
+    return std::make_unique<LoaderT>(
+        pkg_path, model_name, /*run_single_threaded=*/false, std::size_t{1});
+  } else {
+    (void)device_index;
+    return std::make_unique<LoaderT>(pkg_path, model_name, /*run_single_threaded=*/false);
+  }
+}
+
 class AotiModelWrap : public Napi::ObjectWrap<AotiModelWrap> {
  public:
   static void Init(Napi::Env env, Napi::Object exports) {
@@ -51,20 +80,8 @@ class AotiModelWrap : public Napi::ObjectWrap<AotiModelWrap> {
           (info.Length() >= 3 && info[2].IsNumber())
               ? static_cast<c10::DeviceIndex>(info[2].As<Napi::Number>().Int32Value())
               : static_cast<c10::DeviceIndex>(-1);
-      if constexpr (std::is_constructible_v<
-                        torch::inductor::AOTIModelPackageLoader,
-                        const std::string&,
-                        const std::string&,
-                        bool,
-                        std::size_t,
-                        c10::DeviceIndex>) {
-        loader_ = std::make_unique<torch::inductor::AOTIModelPackageLoader>(
-            pkg_path, model_name, /*run_single_threaded=*/false, /*num_runners=*/1, device_index);
-      } else {
-        (void)device_index;
-        loader_ = std::make_unique<torch::inductor::AOTIModelPackageLoader>(
-            pkg_path, model_name, /*run_single_threaded=*/false, /*num_runners=*/1);
-      }
+      loader_ = MakeAotiLoader<torch::inductor::AOTIModelPackageLoader>(
+          pkg_path, model_name, device_index);
     } catch (const Napi::Error& err) {
       err.ThrowAsJavaScriptException();
     } catch (const c10::Error& err) {
