@@ -58,6 +58,7 @@
     "test:cuda": "NORCH_TEST_CUDA=1 node --test dist/test/cuda.test.js",
     "test:asan": "node scripts/test-asan.mjs",
     "bench": "node scripts/bench.mjs",
+    "bench:cuda": "node scripts/bench-cuda.mjs",
     "lint:cpp": "node scripts/lint-cpp.mjs",
     "setup:libtorch": "node scripts/download-libtorch.mjs",
     "prebuild": "node scripts/prebuild.mjs"
