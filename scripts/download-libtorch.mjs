@@ -152,7 +152,11 @@ export async function downloadLibTorch(opts) {
   const parentDir = path.dirname(opts.dest);
   fs.mkdirSync(parentDir, { recursive: true });
   console.log(`[norch] extracting into ${parentDir}...`);
-  execFileSync('unzip', ['-qo', zipPath, '-d', parentDir], { stdio: 'inherit' });
+  if (process.platform === 'win32') {
+    execFileSync('tar', ['-xf', zipPath, '-C', parentDir], { stdio: 'inherit' });
+  } else {
+    execFileSync('unzip', ['-qo', zipPath, '-d', parentDir], { stdio: 'inherit' });
+  }
 
   const extractedDefault = path.join(parentDir, 'libtorch');
   if (path.resolve(extractedDefault) !== path.resolve(opts.dest) && fs.existsSync(extractedDefault)) {

@@ -91,6 +91,10 @@ export function isAutocastEnabled(deviceType: DeviceLike = 'cuda'): boolean {
   return native.isAutocastEnabled(normalizeDevice(deviceType) ?? 'cuda');
 }
 
+export function getAutocastDtype(deviceType: DeviceLike = 'cuda'): DType {
+  return native.getAutocastDtype(normalizeDevice(deviceType) ?? 'cuda');
+}
+
 export function autocast<T>(
   deviceTypeOrOpts: DeviceLike | AutocastOptions,
   fnOrDtype: (() => T) | DType,

@@ -101,6 +101,7 @@ set(NORCH_SOURCES
   native/src/distributed.cpp
   native/src/dlpack.cpp
   native/src/export_runner.cpp
+  native/src/jit_compile.cpp
   native/src/profiler.cpp
 )
 
@@ -116,6 +117,12 @@ set_target_properties(norch_native PROPERTIES
   BUILD_RPATH "${NORCH_RPATH_LIST}"
   INSTALL_RPATH "${NORCH_RPATH_LIST}"
   BUILD_RPATH_USE_ORIGIN ON
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+  RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}"
+  RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}"
+  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+  LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}"
+  LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}"
 )
 
 target_include_directories(norch_native PRIVATE
@@ -134,46 +141,83 @@ target_compile_definitions(norch_native PRIVATE
   NAPI_VERSION=9
   NAPI_CPP_EXCEPTIONS
   BUILDING_NODE_EXTENSION
-  _GLIBCXX_ASSERTIONS
+  $<$<CXX_COMPILER_ID:GNU>:_GLIBCXX_ASSERTIONS>
+  $<$<BOOL:${MSVC}>:NOMINMAX>
+  $<$<BOOL:${MSVC}>:WIN32_LEAN_AND_MEAN>
   $<$<BOOL:${NORCH_HAS_CUDA}>:NORCH_HAS_CUDA=1>
   $<$<BOOL:${NORCH_HAS_NCCL}>:NORCH_HAS_NCCL=1>
   $<$<BOOL:${NORCH_HAS_NCCL}>:USE_C10D_NCCL=1>
 )
 
-target_compile_options(norch_native PRIVATE
-  -O2
-  -g
-  -fexceptions
-  -frtti
-)
-
-if(NORCH_STRICT_WARNINGS)
+if(MSVC)
   target_compile_options(norch_native PRIVATE
-    -Wall
-    -Wextra
-    -Wconversion
-    -Wshadow
-    -Wimplicit-fallthrough
-    -Werror
+    /O2
+    /EHsc
+    /GR
+    /utf-8
+    /bigobj
+    /permissive-
   )
-endif()
+  if(NORCH_STRICT_WARNINGS)
+    target_compile_options(norch_native PRIVATE
+      /W4
+      /wd4100
+      /wd4127
+      /wd4244
+      /wd4267
+      /wd4996
+    )
+  endif()
+else()
+  target_compile_options(norch_native PRIVATE
+    -O2
+    -g
+    -fexceptions
+    -frtti
+  )
 
-if(NORCH_SANITIZERS)
-  target_compile_options(norch_native PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
-  target_link_options(norch_native PRIVATE -fsanitize=address,undefined)
-endif()
+  if(NORCH_STRICT_WARNINGS)
+    target_compile_options(norch_native PRIVATE
+      -Wall
+      -Wextra
+      -Wconversion
+      -Wshadow
+      -Wimplicit-fallthrough
+      -Werror
+    )
+  endif()
 
-find_program(MOLD_LINKER mold)
-find_program(LLD_LINKER ld.lld)
-if(MOLD_LINKER)
-  target_link_options(norch_native PRIVATE -fuse-ld=mold)
-elseif(LLD_LINKER)
-  target_link_options(norch_native PRIVATE -fuse-ld=lld)
+  if(NORCH_SANITIZERS)
+    target_compile_options(norch_native PRIVATE -fsanitize=address,undefined -fno-sanitize=vptr -fno-omit-frame-pointer)
+    target_link_options(norch_native PRIVATE -fsanitize=address,undefined)
+  endif()
+
+  if(NOT APPLE)
+    find_program(MOLD_LINKER mold)
+    find_program(LLD_LINKER ld.lld)
+    if(MOLD_LINKER)
+      target_link_options(norch_native PRIVATE -fuse-ld=mold)
+    elseif(LLD_LINKER)
+      target_link_options(norch_native PRIVATE -fuse-ld=lld)
+    endif()
+  endif()
 endif()
 
 if(APPLE)
   target_link_options(norch_native PRIVATE -undefined dynamic_lookup)
   target_link_libraries(norch_native PRIVATE "${TORCH_LIB}" "${TORCH_CPU_LIB}" "${C10_LIB}")
+elseif(WIN32)
+  set(NORCH_WIN_LINK_LIBS "${TORCH_LIB}" "${TORCH_CPU_LIB}" "${C10_LIB}")
+  if(NORCH_HAS_CUDA)
+    list(APPEND NORCH_WIN_LINK_LIBS "${TORCH_CUDA_LIB}" "${C10_CUDA_LIB}")
+    if(NORCH_CUDART_LIB)
+      list(APPEND NORCH_WIN_LINK_LIBS "${NORCH_CUDART_LIB}")
+    endif()
+  endif()
+  if(DEFINED NODE_LIB AND EXISTS "${NODE_LIB}")
+    list(APPEND NORCH_WIN_LINK_LIBS "${NODE_LIB}")
+  endif()
+  target_link_libraries(norch_native PRIVATE ${NORCH_WIN_LINK_LIBS})
 else()
   set(NORCH_TORCH_LINK_LIBS
     -Wl,--no-as-needed

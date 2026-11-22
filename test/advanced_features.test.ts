@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,37 +15,7 @@ import torch, {
 
 torch.setNumThreads(4);
 
-function pythonSubprocessEnv(): NodeJS.ProcessEnv {
-  const env = { ...process.env };
-  delete env.LD_PRELOAD;
-  delete env.ASAN_OPTIONS;
-  delete env.UBSAN_OPTIONS;
-  return env;
-}
-
-function findPythonTorch(): string | null {
-  const candidates = [
-    process.env.NORCH_PYTHON,
-    path.join(os.homedir(), 'projects', 'torch', '.venv', 'bin', 'python'),
-    'python3',
-  ].filter((p): p is string => Boolean(p));
-  for (const py of candidates) {
-    if (py.includes(path.sep) && !fs.existsSync(py)) continue;
-    try {
-      execFileSync(py, ['-c', 'import torch'], {
-        stdio: 'ignore',
-        timeout: 15000,
-        env: pythonSubprocessEnv(),
-      });
-      return py;
-    } catch {
-      // ignore
-    }
-  }
-  return null;
-}
-
-describe('Advanced training, GPU-prep primitives, hooks, forward AD, RNNs & export runners', () => {
+describe('Advanced training, GPU-prep primitives, hooks, forward AD, RNNs & native JIT/compile', () => {
   it('preserves weight tying across Module.to() with zero tensor leaks', () => {
     const baseline = torch.memoryStats();
 
@@ -384,95 +353,168 @@ describe('Advanced training, GPU-prep primitives, hooks, forward AD, RNNs & expo
     });
   });
 
-  it('loads and executes real Python-exported TorchScript (.pt) and AOTInductor (.pt2) models in Node.js', (t) => {
-    const py = findPythonTorch();
-    if (!py) {
-      t.skip('No local Python PyTorch installation found');
-      return;
-    }
-
+  it('supports pure-Node torch.jit.trace, .save()/.load() (.pt), torch.compile() training+dynamic shapes, and zero-sync GradScaler', () => {
     const cacheDir = path.join(os.homedir(), '.cache', 'norch');
     fs.mkdirSync(cacheDir, { recursive: true });
-    const tsPath = path.join(cacheDir, 'export_test_jit.pt');
-    const pt2Path = path.join(cacheDir, 'export_test_aoti.pt2');
+    const singlePtPath = path.join(cacheDir, `norch_native_jit_${process.pid}.pt`);
+    const multiPtPath = path.join(cacheDir, `norch_native_multi_${process.pid}.pt`);
 
-    const pyExport = `
-import json, torch, torch.nn as nn
-
-torch.manual_seed(0)
-class ExportNet(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = nn.Linear(4, 8)
-        self.fc2 = nn.Linear(8, 3)
-    def forward(self, x):
-        return self.fc2(torch.relu(self.fc1(x)))
-
-m = ExportNet().eval()
-x = torch.tensor([[0.5, -1.0, 2.0, 0.25], [-0.3, 0.7, -0.5, 1.5]], dtype=torch.float32)
-with torch.no_grad():
-    ref_out = m(x).flatten().tolist()
-
-# 1. TorchScript export
-traced = torch.jit.trace(m, x)
-traced.save(${JSON.stringify(tsPath)})
-
-# 2. AOTInductor (.pt2) export
-aoti_ok = False
-try:
-    ep = torch.export.export(m, (x,))
-    torch._inductor.aoti_compile_and_package(ep, package_path=${JSON.stringify(pt2Path)})
-    aoti_ok = True
-except Exception as e:
-    aoti_ok = False
-
-print(json.dumps({"ref_out": ref_out, "aoti_ok": aoti_ok}))
-`;
-
+    const baseline = torch.memoryStats();
     try {
-      const info = JSON.parse(
-        execFileSync(py, ['-c', pyExport], {
-          encoding: 'utf8',
-          timeout: 60000,
-          env: pythonSubprocessEnv(),
-        })
-      ) as {
-        ref_out: number[];
-        aoti_ok: boolean;
-      };
+      torch.manualSeed(42);
 
-      torch.tidy(() => {
-        const x = torch.tensor(
-          [
-            [0.5, -1.0, 2.0, 0.25],
-            [-0.3, 0.7, -0.5, 1.5],
-          ],
-          { dtype: torch.float32 }
-        );
+      // 1. Pure-Node torch.jit.trace(model) -> execute -> .save(.pt) -> torch.jit.load(.pt)
+      class TraceNet extends nn.Module {
+        readonly fc1 = new nn.Linear(4, 8);
+        readonly norm = new nn.LayerNorm(8);
+        readonly fc2 = new nn.Linear(8, 3);
+        forward(x: Tensor): Tensor {
+          return this.fc2.forward(this.norm.forward(this.fc1.forward(x)).gelu());
+        }
+      }
 
-        // Verify TorchScript execution
-        using jit = torch.loadJitModule(tsPath, 'cpu');
-        jit.eval();
-        const jitOut = jit.forward(x) as Tensor;
-        const jitVals = Array.from(jitOut.toTypedArray() as Float32Array);
-        for (let i = 0; i < info.ref_out.length; i++) {
-          assert.ok(Math.abs(jitVals[i]! - info.ref_out[i]!) < 1e-5, `TorchScript mismatch at ${i}`);
+      {
+        using model = new TraceNet();
+        model.eval();
+        using ex = torch.randn([2, 4]);
+        using xTest = torch.randn([5, 4]);
+
+        using traced = torch.jit.trace(model, ex);
+        assert.ok(traced.graphString().includes('aten::'));
+        traced.save(singlePtPath);
+        assert.ok(fs.existsSync(singlePtPath) && fs.statSync(singlePtPath).size > 0);
+
+        using loaded = torch.jit.load(singlePtPath, 'cpu');
+        loaded.eval();
+
+        torch.noGrad(() => {
+          torch.tidy(() => {
+            const eagerOut = model.forward(xTest);
+            const tracedOut = traced.forward(xTest) as Tensor;
+            const loadedOut = loaded.forward(xTest) as Tensor;
+            assert.ok(tracedOut.allclose(eagerOut, 1e-5, 1e-5), 'TracedModule mismatch vs eager');
+            assert.ok(loadedOut.allclose(eagerOut, 1e-5, 1e-5), 'Saved+loaded .pt mismatch vs eager');
+          });
+        });
+      }
+
+      // 2. Multi-output pure-Node torch.jit.trace -> .save(.pt) -> torch.jit.load(.pt)
+      {
+        using a = torch.tensor([1.0, 2.0, 3.0]);
+        using b = torch.tensor([4.0, 5.0, 6.0]);
+        using multi = torch.jit.trace((u, v) => [u.add(v), u.mul(v)], [a, b]);
+        assert.equal(multi.numInputs, 2);
+        assert.equal(multi.numOutputs, 2);
+        multi.save(multiPtPath);
+
+        using reloaded = torch.jit.load(multiPtPath, 'cpu');
+        torch.tidy(() => {
+          const [sumT, prodT] = multi.forward(a, b) as Tensor[];
+          assert.deepEqual(sumT!.toArray(), [5, 7, 9]);
+          assert.deepEqual(prodT!.toArray(), [4, 10, 18]);
+
+          const [sumR, prodR] = reloaded.forward(a, b) as Tensor[];
+          assert.deepEqual(sumR!.toArray(), [5, 7, 9]);
+          assert.deepEqual(prodR!.toArray(), [4, 10, 18]);
+        });
+      }
+
+      // 3. Pure-Node torch.compile(model): full training parity with eager + dynamic shape retrace
+      {
+        torch.manualSeed(77);
+        using eagerNet = new TraceNet();
+        using compiledBase = new TraceNet();
+        const sd = eagerNet.stateDict();
+        compiledBase.loadStateDict(sd);
+        for (const t of Object.values(sd)) t.dispose();
+
+        using compiledNet = torch.compile(compiledBase);
+        using optEager = new optim.AdamW(eagerNet.parameters(), { lr: 1e-2, fused: true });
+        using optCompiled = new optim.AdamW(compiledNet.parameters(), { lr: 1e-2, fused: true });
+
+        using xTrain = torch.randn([8, 4]);
+        using yTrain = torch.randn([8, 3]);
+
+        for (let step = 0; step < 5; step++) {
+          torch.tidy(() => {
+            optEager.zeroGrad();
+            const outE = eagerNet.forward(xTrain);
+            F.mseLoss(outE, yTrain).backward();
+            optEager.step();
+
+            optCompiled.zeroGrad();
+            const outC = compiledNet.forward(xTrain) as Tensor;
+            F.mseLoss(outC, yTrain).backward();
+            optCompiled.step();
+          });
+        }
+        assert.equal(compiledNet.graphCount, 1);
+
+        const pEager = eagerNet.parameters();
+        const pComp = compiledBase.parameters();
+        for (let i = 0; i < pEager.length; i++) {
+          assert.ok(
+            pEager[i]!.allclose(pComp[i]!, 1e-5, 1e-5),
+            `torch.compile() trained param ${i} diverged from eager`
+          );
         }
 
-        // Verify AOTInductor (.pt2) execution if Python compiled it cleanly
-        if (info.aoti_ok && fs.existsSync(pt2Path)) {
-          using aoti = torch.loadAotiModel(pt2Path);
-          const [aotiOut] = aoti.run([x]);
-          assert.ok(aotiOut !== undefined);
-          const aotiVals = Array.from(aotiOut.toTypedArray() as Float32Array);
-          for (let i = 0; i < info.ref_out.length; i++) {
-            assert.ok(Math.abs(aotiVals[i]! - info.ref_out[i]!) < 1e-5, `AOTInductor mismatch at ${i}`);
-          }
+        // Dynamic batch size triggers automatic retrace
+        torch.noGrad(() => {
+          torch.tidy(() => {
+            const xDyn = torch.randn([3, 4]);
+            const yE = eagerNet.forward(xDyn);
+            const yC = compiledNet.forward(xDyn) as Tensor;
+            assert.ok(yC.allclose(yE, 1e-5, 1e-5));
+          });
+        });
+        assert.equal(compiledNet.graphCount, 2);
+      }
+
+      // 4. Zero-sync GradScaler({ device: 'cpu' }) with stepNoSync + ampUpdateScale
+      {
+        using lin = new nn.Linear(4, 2);
+        using opt = new optim.AdamW(lin.parameters(), { lr: 1e-2, fused: true });
+        using scaler = new torch.amp.GradScaler({
+          device: 'cpu',
+          initScale: 256,
+          growthFactor: 2,
+          backoffFactor: 0.5,
+          growthInterval: 2,
+        });
+        using x = torch.randn([4, 4]);
+        using y = torch.randn([4, 2]);
+
+        // Two finite steps should double the scale (growthInterval = 2)
+        for (let s = 0; s < 2; s++) {
+          torch.tidy(() => {
+            opt.zeroGrad();
+            const loss = F.mseLoss(lin.forward(x), y);
+            scaler.scale(loss).backward();
+            scaler.stepNoSync(opt);
+            scaler.update();
+          });
         }
-      });
+        assert.equal(scaler.getScale(), 512);
+
+        // Inf gradient must skip parameter update AND back off scale without CPU sync during step
+        using snap = torch.noGrad(() => lin.weight.clone());
+        torch.tidy(() => {
+          opt.zeroGrad();
+          const loss = F.mseLoss(lin.forward(x), y);
+          scaler.scale(loss).backward();
+          lin.weight.grad!.fill_(Number.POSITIVE_INFINITY);
+          scaler.stepNoSync(opt);
+          scaler.update();
+        });
+        assert.ok(lin.weight.equal(snap), 'stepNoSync mutated weights despite Inf gradient');
+        assert.equal(scaler.getScale(), 256);
+      }
     } finally {
-      if (fs.existsSync(tsPath)) fs.unlinkSync(tsPath);
-      if (fs.existsSync(pt2Path)) fs.unlinkSync(pt2Path);
+      fs.rmSync(singlePtPath, { force: true });
+      fs.rmSync(multiPtPath, { force: true });
     }
+
+    assert.equal(torch.memoryStats().liveTensors, baseline.liveTensors);
   });
 });

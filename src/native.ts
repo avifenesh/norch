@@ -72,6 +72,25 @@ export interface NativeJitModule {
   isDisposed(): boolean;
 }
 
+export interface NativeTraceGraphOptions {
+  strict?: boolean;
+  optimize?: boolean;
+  profilingExecutor?: boolean;
+  freezeConstants?: boolean;
+  name?: string;
+}
+
+export interface NativeTracedGraph {
+  run(inputs: NativeTensor[]): NativeTensor | NativeTensor[];
+  graphString(): string;
+  optimizedGraphString(exampleInputs?: NativeTensor[]): string;
+  numInputs(): number;
+  numOutputs(): number;
+  save(filePath: string): void;
+  dispose(): void;
+  isDisposed(): boolean;
+}
+
 export interface NativeDistWork {
   wait(timeoutMs?: number): boolean;
   isCompleted(): boolean;
@@ -621,6 +640,14 @@ export interface NativeFastOps {
   ): NativeTensor;
   sparseMm(mat1: NativeTensor, mat2: NativeTensor): NativeTensor;
   ampUnscaleAndCheck(tensors: NativeTensor[], foundInf: NativeTensor, invScale: NativeTensor): void;
+  ampUpdateScale(
+    currentScale: NativeTensor,
+    growthTracker: NativeTensor,
+    foundInf: NativeTensor,
+    growthFactor: number,
+    backoffFactor: number,
+    growthInterval: number
+  ): NativeTensor;
   convTranspose3d(
     input: NativeTensor,
     weight: NativeTensor,
@@ -736,6 +763,12 @@ export interface NativeAddon {
     deviceIndex?: number
   ) => NativeAotiModel;
   NativeJitModule: new (path: string, device?: string) => NativeJitModule;
+  NativeTracedGraph: new () => NativeTracedGraph;
+  traceGraph(
+    fn: (inputs: NativeTensor[]) => NativeTensor | NativeTensor[],
+    exampleInputs: NativeTensor[],
+    opts?: NativeTraceGraphOptions
+  ): NativeTracedGraph;
 
   fromTypedArray(
     ta: TypedArray,

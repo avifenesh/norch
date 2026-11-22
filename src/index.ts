@@ -15,6 +15,7 @@ import * as funcMod from './func.js';
 import * as profilerMod from './profiler.js';
 import * as quantMod from './quantization.js';
 import * as exportMod from './export.js';
+import * as jitMod from './jit.js';
 import * as nn from './nn/index.js';
 import * as optim from './optim/index.js';
 import * as utils from './utils/index.js';
@@ -37,6 +38,7 @@ export { func, valueAndGrad, jacrev, jacfwd, hessian, vmap, functionalCall } fro
 export * from './profiler.js';
 export * from './quantization.js';
 export * from './export.js';
+export * from './jit.js';
 export { nn, optim, utils, amp };
 export { functional as F } from './functional.js';
 
@@ -171,7 +173,11 @@ export const torch = {
   AutogradFunction: autogradMod.AutogradFunction,
   forwardAD: autogradMod.forwardAD,
 
-  // Exported model runners
+  // Native JIT tracing, compilation & model runners (zero Python required)
+  jit: jitMod.jit,
+  compile: jitMod.compile,
+  TracedModule: jitMod.TracedModule,
+  CompiledModule: jitMod.CompiledModule,
   AotiModel: exportMod.AotiModel,
   loadAotiModel: exportMod.loadAotiModel,
   JitModule: exportMod.JitModule,

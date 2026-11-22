@@ -8,7 +8,23 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform_key: linux-x64
+            backend: cpu
+            run_lint: true
+          - os: macos-14
+            platform_key: darwin-arm64
+            backend: mps
+            run_lint: false
+          - os: windows-latest
+            platform_key: win32-x64
+            backend: cpu
+            run_lint: false
+    runs-on: ${{ matrix.os }}
     env:
       LIBTORCH_VERSION: 2.7.0
       LIBTORCH: ${{ runner.temp }}/libtorch
@@ -20,19 +36,29 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install build tools
+      - name: Install Linux build tools
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ninja-build ccache clang-tidy unzip
+
+      - name: Install macOS build tools
+        if: runner.os == 'macOS'
+        run: brew install ninja ccache
 
       - name: Cache libtorch
         id: cache-libtorch
         uses: actions/cache@v4
         with:
           path: ${{ env.LIBTORCH }}
-          key: libtorch-linux-cpu-${{ env.LIBTORCH_VERSION }}
+          key: libtorch-${{ matrix.platform_key }}-${{ matrix.backend }}-${{ env.LIBTORCH_VERSION }}
 
-      - name: Download CPU libtorch
+      - name: Download libtorch
         if: steps.cache-libtorch.outputs.cache-hit != 'true'
-        run: node scripts/download-libtorch.mjs --backend=cpu --version=${{ env.LIBTORCH_VERSION }} --dest=${{ env.LIBTORCH }}
+        run: node scripts/download-libtorch.mjs --backend=${{ matrix.backend }} --version=${{ env.LIBTORCH_VERSION }} --dest=${{ env.LIBTORCH }}
+
+      - name: Add libtorch DLLs to PATH on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "$env:LIBTORCH\lib" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install npm dependencies
         run: npm ci
@@ -41,7 +67,13 @@ jobs:
         run: npm run build
 
       - name: Run CPU test suite
+        shell: bash
         run: npm test
 
       - name: Run clang-tidy
+        if: matrix.run_lint
         run: npm run lint:cpp
+
+      - name: Verify npm pack manifest
+        if: runner.os == 'Linux'
+        run: npm pack --dry-run

@@ -36,13 +36,18 @@ const results = [];
   );
 }
 
-// 2. TransformerBlock(d=512, nhead=8, B=16, T=128) BF16 autocast fwd+bwd+fusedAdamW
+// 2. TransformerBlock(d=512, nhead=8, B=16, T=128) BF16 autocast fwd+bwd+fusedAdamW (eager & compiled)
 {
-  using block = new nn.TransformerBlock(512, 8, { dimFeedforward: 2048 });
-  using head = new nn.Linear(512, 1024);
-  block.to('cuda');
-  head.to('cuda');
-  using opt = new optim.AdamW([...block.parameters(), ...head.parameters()], { lr: 1e-3, fused: true });
+  class BenchBlock extends nn.Module {
+    block = new nn.TransformerBlock(512, 8, { dimFeedforward: 2048 });
+    head = new nn.Linear(512, 1024);
+    forward(x) {
+      return this.head.forward(this.block.forward(x, { isCausal: true }));
+    }
+  }
+  using model = new BenchBlock();
+  model.to('cuda');
+  using opt = new optim.AdamW(model.parameters(), { lr: 1e-3, fused: true });
   using x = torch.randn([16, 128, 512], { device: 'cuda' });
   using y = torch.randint(0, 1024, [16, 128], { device: 'cuda' });
 
@@ -50,9 +55,20 @@ const results = [];
     benchCuda('TransformerBlock(d=512,B=16,T=128) bf16 fwd+bwd+fusedAdamW', 5, 30, () => {
       torch.tidy(() => {
         opt.zeroGrad();
-        const logits = torch.autocast('cuda', torch.bfloat16, () =>
-          head.forward(block.forward(x, { isCausal: true }))
-        );
+        const logits = torch.autocast('cuda', torch.bfloat16, () => model.forward(x));
+        const loss = F.crossEntropy(logits.float().reshape(-1, 1024), y.reshape(-1));
+        loss.backward();
+        opt.step();
+      });
+    })
+  );
+
+  using compiled = torch.compile(model);
+  results.push(
+    benchCuda('torch.compile(TransformerBlock) bf16 fwd+bwd+fusedAdamW', 5, 30, () => {
+      torch.tidy(() => {
+        opt.zeroGrad();
+        const logits = torch.autocast('cuda', torch.bfloat16, () => compiled.forward(x));
         const loss = F.crossEntropy(logits.float().reshape(-1, 1024), y.reshape(-1));
         loss.backward();
         opt.step();
@@ -61,7 +77,7 @@ const results = [];
   );
 }
 
-// 3. CUDAGraph replay latency (chain of 8 ops on [1024, 1024])
+// 3. CUDAGraph replay latency (chain of 8 ops on [1024, 1024]) & torch.compile(reduce-overhead)
 {
   using inp = torch.randn([1024, 1024], { dtype: 'bfloat16', device: 'cuda' });
   using out = torch.zeros([1024, 1024], { dtype: 'bfloat16', device: 'cuda' });
@@ -84,6 +100,24 @@ const results = [];
     })
   );
   g.reset();
+
+  using compiledChain = torch.compile(
+    (t) => {
+      let h = t;
+      for (let k = 0; k < 8; k++) {
+        h = h.mul(0.99).add(0.01).relu();
+      }
+      return h;
+    },
+    { mode: 'reduce-overhead' }
+  );
+  torch.noGrad(() => {
+    results.push(
+      benchCuda('torch.compile(8 ops [1024,1024] bf16, reduce-overhead)', 10, 200, () => {
+        using r = compiledChain(inp);
+      })
+    );
+  });
 }
 
 torch.cuda.emptyCache();
@@ -165,12 +199,12 @@ try {
   console.error('Python GPU benchmark skipped:', err.message);
 }
 
+const pyByName = new Map(pyResults.map((r) => [r.name, r]));
 console.log('\nGPU Benchmark (' + props.name + ', libtorch ' + torch.libtorchVersion() + '):');
 console.log('Benchmark'.padEnd(62) + 'norch (ms)'.padStart(14) + 'PyTorch (ms)'.padStart(14) + 'Ratio'.padStart(10));
 console.log('-'.repeat(100));
-for (let i = 0; i < results.length; i++) {
-  const n = results[i];
-  const p = pyResults[i];
+for (const n of results) {
+  const p = pyByName.get(n.name);
   const ratio = p ? `${(n.msPerIter / p.msPerIter).toFixed(2)}x` : 'n/a';
   console.log(
     n.name.padEnd(62) +

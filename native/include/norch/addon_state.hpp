@@ -42,6 +42,7 @@ class AddonState {
   Napi::FunctionReference cuda_graph_ctor;
   Napi::FunctionReference aoti_model_ctor;
   Napi::FunctionReference jit_module_ctor;
+  Napi::FunctionReference traced_graph_ctor;
   Napi::FunctionReference process_group_ctor;
   Napi::FunctionReference dist_work_ctor;
   Napi::FunctionReference profiler_result_ctor;

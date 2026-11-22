@@ -57,7 +57,8 @@ export function loadAotiModel(packagePath: string, opts?: LoadAotiOptions): Aoti
 }
 
 /**
- * Loads and runs a TorchScript `.pt` archive exported from Python via `torch.jit.trace` / `torch.jit.script`.
+ * Loads and runs a TorchScript `.pt` archive saved by `torch.jit.trace(...).save(path)`
+ * or any compatible libtorch serializer.
  */
 export class JitModule implements Disposable {
   readonly _native: NativeJitModule;

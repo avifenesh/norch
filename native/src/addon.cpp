@@ -11,6 +11,7 @@
 #include "norch/dlpack.hpp"
 #include "norch/export_runner.hpp"
 #include "norch/generator_wrap.hpp"
+#include "norch/jit_compile.hpp"
 #include "norch/ops_fast.hpp"
 #include "norch/profiler.hpp"
 #include "norch/tensor_wrap.hpp"
@@ -31,6 +32,7 @@ Napi::Object InitAddon(Napi::Env env, Napi::Object exports) {
   norch::RegisterDistributed(env, exports);
   norch::RegisterDlpack(env, exports);
   norch::RegisterExportRunners(env, exports);
+  norch::RegisterJitCompile(env, exports);
   norch::RegisterProfiler(env, exports);
   return exports;
 }

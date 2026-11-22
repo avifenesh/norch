@@ -1652,6 +1652,21 @@ Napi::Value AmpUnscaleAndCheckOp(const Napi::CallbackInfo& info) {
   });
 }
 
+Napi::Value AmpUpdateScaleOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    auto& current_scale = TensorWrap::UnwrapMutableTensor(env, info[0]);
+    auto& growth_tracker = TensorWrap::UnwrapMutableTensor(env, info[1]);
+    const auto& found_inf = TensorWrap::UnwrapTensor(env, info[2]);
+    const double growth_factor = info[3].As<Napi::Number>().DoubleValue();
+    const double backoff_factor = info[4].As<Napi::Number>().DoubleValue();
+    const auto growth_interval = info[5].As<Napi::Number>().Int64Value();
+    at::_amp_update_scale_(
+        current_scale, growth_tracker, found_inf, growth_factor, backoff_factor, growth_interval);
+    return info[0];
+  });
+}
+
 Napi::Value ConvTranspose3dOp(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
@@ -2042,6 +2057,7 @@ void RegisterFastOps(Napi::Env env, Napi::Object exports) {
   ops.Set("sparseCsrTensor", Napi::Function::New(env, SparseCsrTensorOp));
   ops.Set("sparseMm", Napi::Function::New(env, SparseMmOp));
   ops.Set("ampUnscaleAndCheck", Napi::Function::New(env, AmpUnscaleAndCheckOp));
+  ops.Set("ampUpdateScale", Napi::Function::New(env, AmpUpdateScaleOp));
   ops.Set("convTranspose3d", Napi::Function::New(env, ConvTranspose3dOp));
   ops.Set("maxPool1d", Napi::Function::New(env, MaxPool1dOp));
   ops.Set("maxPool3d", Napi::Function::New(env, MaxPool3dOp));

@@ -41,12 +41,19 @@ function canUseFusedKernel(params: Parameter[]): boolean {
   return true;
 }
 
+interface FusedScalerArgs {
+  foundInf?: Tensor;
+  gradScale?: Tensor;
+}
+
 function runAdamStep(
   paramGroups: AdamParamGroup[],
   getState: (p: Parameter) => Record<string, Tensor | number>,
   keepState: (t: Tensor) => Tensor,
-  decoupledWeightDecay: boolean
-): void {
+  decoupledWeightDecay: boolean,
+  scalerArgs?: FusedScalerArgs
+): boolean {
+  let allFused = true;
   noGrad(() => {
     tidy(() => {
       for (const group of paramGroups) {
@@ -70,6 +77,7 @@ function runAdamStep(
           const expAvgSqs: NativeTensor[] = [];
           const maxExpAvgSqs: NativeTensor[] = [];
           const stateSteps: NativeTensor[] = [];
+          const stepTensors: Tensor[] = [];
 
           for (let i = 0; i < activeParams.length; i++) {
             const p = activeParams[i]!;
@@ -96,7 +104,9 @@ function runAdamStep(
               st['stepTensor'] = stepTensor;
             }
             stepTensor.add_(1);
-            st['step'] = ((st['step'] as number | undefined) ?? 0) + 1;
+            if (!scalerArgs?.foundInf) {
+              st['step'] = ((st['step'] as number | undefined) ?? 0) + 1;
+            }
 
             nativeParams.push(p._native);
             nativeGrads.push(g._native);
@@ -106,7 +116,20 @@ function runAdamStep(
               maxExpAvgSqs.push(maxExpAvgSq._native);
             }
             stateSteps.push(stepTensor._native);
+            stepTensors.push(stepTensor);
           }
+
+          const targetDev = activeParams[0]!.device;
+          const groupFoundInf = scalerArgs?.foundInf
+            ? scalerArgs.foundInf.device.equals(targetDev)
+              ? scalerArgs.foundInf
+              : scalerArgs.foundInf.to({ device: targetDev, nonBlocking: true })
+            : undefined;
+          const groupGradScale = scalerArgs?.gradScale
+            ? scalerArgs.gradScale.device.equals(targetDev)
+              ? scalerArgs.gradScale
+              : scalerArgs.gradScale.to({ device: targetDev, nonBlocking: true })
+            : undefined;
 
           native.fast.fusedAdamStep(
             nativeParams,
@@ -121,9 +144,25 @@ function runAdamStep(
             weightDecay,
             eps,
             amsgrad,
-            decoupledWeightDecay
+            decoupledWeightDecay,
+            groupGradScale?._native ?? null,
+            groupFoundInf?._native ?? null
           );
+
+          // On-device step rollback when foundInf != 0 (zero CPU sync!)
+          if (groupFoundInf) {
+            const rollback = groupFoundInf.clamp(0, 1).squeeze();
+            for (const stepT of stepTensors) {
+              stepT.sub_(rollback);
+            }
+          }
           continue;
+        }
+
+        allFused = false;
+        if (scalerArgs?.foundInf) {
+          // Cannot execute unfused step without checking foundInf on CPU; bail out so GradScaler handles fallback
+          return;
         }
 
         // Unfused fallback
@@ -180,6 +219,7 @@ function runAdamStep(
       }
     });
   });
+  return allFused;
 }
 
 export class Adam extends Optimizer<AdamParamGroup> {
@@ -204,6 +244,20 @@ export class Adam extends Optimizer<AdamParamGroup> {
     );
     return loss;
   }
+
+  /** @internal Zero-sync fused AMP handoff used by `GradScaler.stepNoSync()`. */
+  _stepWithFoundInf(foundInf: Tensor, gradScale?: Tensor): boolean {
+    if (!this.paramGroups.every((g) => g.fused && (g.params.length === 0 || canUseFusedKernel(g.params)))) {
+      return false;
+    }
+    return runAdamStep(
+      this.paramGroups,
+      (p) => this.getState(p),
+      (t) => this.keepStateTensor(t),
+      false,
+      { foundInf, gradScale }
+    );
+  }
 }
 
 export class AdamW extends Optimizer<AdamParamGroup> {
@@ -227,5 +281,19 @@ export class AdamW extends Optimizer<AdamParamGroup> {
       true
     );
     return loss;
+  }
+
+  /** @internal Zero-sync fused AMP handoff used by `GradScaler.stepNoSync()`. */
+  _stepWithFoundInf(foundInf: Tensor, gradScale?: Tensor): boolean {
+    if (!this.paramGroups.every((g) => g.fused && (g.params.length === 0 || canUseFusedKernel(g.params)))) {
+      return false;
+    }
+    return runAdamStep(
+      this.paramGroups,
+      (p) => this.getState(p),
+      (t) => this.keepStateTensor(t),
+      true,
+      { foundInf, gradScale }
+    );
   }
 }

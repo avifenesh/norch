@@ -1,10 +1,37 @@
 {
   "name": "norch",
   "version": "0.1.0",
-  "description": "PyTorch equivalent for Node.js wrapping libtorch (c10, ATen, and C++ autograd) via C++23 Node-API",
+  "license": "MIT",
+  "description": "PyTorch equivalent for Node.js wrapping libtorch (c10, ATen, torch::autograd, c10d, Kineto, and torch::jit) via C++23 Node-API",
+  "keywords": [
+    "pytorch",
+    "libtorch",
+    "deep-learning",
+    "machine-learning",
+    "tensors",
+    "autograd",
+    "cuda",
+    "gpu",
+    "neural-networks",
+    "jit",
+    "node-api"
+  ],
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "CMakeLists.txt",
+    "bin/",
+    "dist/src/",
+    "native/",
+    "scripts/build-native.mjs",
+    "scripts/codegen.mjs",
+    "scripts/download-libtorch.mjs",
+    "scripts/find-libtorch.mjs",
+    "scripts/prebuild.mjs"
+  ],
   "bin": {
     "norch-setup": "./bin/norch-setup.mjs"
   },
@@ -44,6 +71,10 @@
     "./profiler": {
       "types": "./dist/src/profiler.d.ts",
       "import": "./dist/src/profiler.js"
+    },
+    "./jit": {
+      "types": "./dist/src/jit.d.ts",
+      "import": "./dist/src/jit.js"
     }
   },
   "engines": {
@@ -61,7 +92,7 @@
     "bench:cuda": "node scripts/bench-cuda.mjs",
     "lint:cpp": "node scripts/lint-cpp.mjs",
     "setup:libtorch": "node scripts/download-libtorch.mjs",
-    "prebuild": "node scripts/prebuild.mjs"
+    "stage:prebuild": "node scripts/prebuild.mjs"
   },
   "dependencies": {
     "node-addon-api": "^8.5.0"
