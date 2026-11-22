@@ -454,6 +454,7 @@ Napi::Value CudaEmptyCache(const Napi::CallbackInfo& info) {
   return GuardNapi(env, [&]() -> Napi::Value {
 #ifdef NORCH_HAS_CUDA
     if (at::cuda::is_available()) {
+      at::globalContext().lazyInitDevice(c10::DeviceType::CUDA);
       c10::cuda::CUDACachingAllocator::emptyCache();
     }
 #endif
@@ -468,6 +469,7 @@ Napi::Value CudaSetMemoryFraction(const Napi::CallbackInfo& info) {
     if (!at::cuda::is_available()) {
       throw Napi::Error::New(env, "CUDA is not available");
     }
+    at::globalContext().lazyInitDevice(c10::DeviceType::CUDA);
     const double fraction = info[0].As<Napi::Number>().DoubleValue();
     const auto idx = (info.Length() >= 2 && info[1].IsNumber())
                          ? static_cast<c10::DeviceIndex>(info[1].As<Napi::Number>().Int32Value())
@@ -487,6 +489,7 @@ Napi::Value CudaResetPeakMemoryStats(const Napi::CallbackInfo& info) {
     if (!at::cuda::is_available()) {
       return env.Undefined();
     }
+    at::globalContext().lazyInitDevice(c10::DeviceType::CUDA);
     const auto idx = (info.Length() >= 1 && info[0].IsNumber())
                          ? static_cast<c10::DeviceIndex>(info[0].As<Napi::Number>().Int32Value())
                          : c10::cuda::current_device();
@@ -505,6 +508,7 @@ Napi::Value CudaMemoryStats(const Napi::CallbackInfo& info) {
     if (!at::cuda::is_available()) {
       throw Napi::Error::New(env, "CUDA is not available");
     }
+    at::globalContext().lazyInitDevice(c10::DeviceType::CUDA);
     const auto idx = (info.Length() >= 1 && info[0].IsNumber())
                          ? static_cast<c10::DeviceIndex>(info[0].As<Napi::Number>().Int32Value())
                          : c10::cuda::current_device();

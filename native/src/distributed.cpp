@@ -15,6 +15,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -609,7 +610,15 @@ class ProcessGroupWrap : public Napi::ObjectWrap<ProcessGroupWrap> {
     }
   }
 
-  ~ProcessGroupWrap() override = default;
+  ~ProcessGroupWrap() override {
+    if (backend_) {
+      try {
+        backend_->shutdown();
+      } catch (...) {
+        std::fputs("norch: suppressed exception in ~ProcessGroupWrap\n", stderr);
+      }
+    }
+  }
   ProcessGroupWrap(const ProcessGroupWrap&) = delete;
   ProcessGroupWrap& operator=(const ProcessGroupWrap&) = delete;
   ProcessGroupWrap(ProcessGroupWrap&&) = delete;
@@ -866,10 +875,15 @@ class ProcessGroupWrap : public Napi::ObjectWrap<ProcessGroupWrap> {
   }
 
   Napi::Value Destroy(const Napi::CallbackInfo& info) {
-    backend_.reset();
-    store_.reset();
-    base_store_.reset();
-    return info.Env().Undefined();
+    return GuardNapi(info.Env(), [&]() -> Napi::Value {
+      if (backend_) {
+        backend_->shutdown();
+      }
+      backend_.reset();
+      store_.reset();
+      base_store_.reset();
+      return info.Env().Undefined();
+    });
   }
 
   Napi::Value IsDestroyed(const Napi::CallbackInfo& info) {
