@@ -46,7 +46,7 @@ jobs:
 
       - name: Install macOS build tools
         if: runner.os == 'macOS'
-        run: brew install ninja ccache
+        run: brew install ninja ccache libomp
 
       - name: Cache libtorch
         id: cache-libtorch
@@ -71,7 +71,6 @@ jobs:
         run: npm run build
 
       - name: Run CPU test suite
-        shell: bash
         run: npm test
 
       - name: Run clang-tidy
