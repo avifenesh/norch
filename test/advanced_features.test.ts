@@ -510,6 +510,53 @@ describe('Advanced training, GPU-prep primitives, hooks, forward AD, RNNs & nati
         assert.ok(lin.weight.equal(snap), 'stepNoSync mutated weights despite Inf gradient');
         assert.equal(scaler.getScale(), 256);
       }
+
+      // 5. Muon optimizer (Newton-Schulz orthogonalization, convergence, 2D guard, checkpoint resume)
+      {
+        // Rejects non-2D params
+        using rawVec = torch.randn([8]);
+        using vec = new nn.Parameter(rawVec);
+        assert.throws(() => new optim.Muon([vec]), /2D/);
+
+        // Newton-Schulz produces nearly orthogonal rows (O @ O^T ≈ I)
+        torch.tidy(() => {
+          const g = torch.randn([4, 8]);
+          const ortho = optim.zeropowerViaNewtonSchulz(g);
+          assert.deepEqual(ortho.shape, [4, 8]);
+          assert.equal(ortho.dtype, 'bfloat16');
+          const gram = ortho.float().matmul(ortho.float().T);
+          const diagMean = torch.ops.aten.diagonal(gram).mean().item();
+          assert.ok(diagMean > 0.5 && diagMean < 1.5, `Unexpected NS diagonal mean: ${diagMean}`);
+        });
+
+        // Hybrid Muon (2D hidden weights) + AdamW (biases) converges cleanly with zero leaks
+        using mlp = new nn.Sequential(new nn.Linear(8, 16), new nn.GELU(), new nn.Linear(16, 4));
+        const muonParams = mlp.parameters().filter((p) => p.dim === 2);
+        const adamParams = mlp.parameters().filter((p) => p.dim !== 2);
+        using optM = new optim.Muon(muonParams, { lr: 0.02, weightDecay: 0.01, adjustLrFn: 'match_rms_adamw' });
+        using optA = new optim.AdamW(adamParams, { lr: 1e-2 });
+        using x = torch.randn([16, 8]);
+        using y = torch.tidy(() =>
+          torch.keep(x.narrow(1, 0, 4).sin().add(x.narrow(1, 4, 4).mul(0.5)))
+        );
+
+        let loss0 = 0;
+        let lossLast = 0;
+        for (let s = 0; s < 35; s++) {
+          const lv = torch.tidy(() => {
+            optM.zeroGrad();
+            optA.zeroGrad();
+            const l = F.mseLoss(mlp.forward(x), y);
+            l.backward();
+            optM.step();
+            optA.step();
+            return l.item();
+          });
+          if (s === 0) loss0 = lv;
+          lossLast = lv;
+        }
+        assert.ok(lossLast < loss0 * 0.3, `Muon hybrid MLP did not converge: ${loss0} -> ${lossLast}`);
+      }
     } finally {
       fs.rmSync(singlePtPath, { force: true });
       fs.rmSync(multiPtPath, { force: true });

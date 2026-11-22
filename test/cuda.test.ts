@@ -577,6 +577,15 @@ for _ in range(3):
     F.mse_loss(p * p, target).backward()
     opt.step()
 
+# 5. Muon on CUDA (3 steps on 16x8 matrix)
+mp = torch.sin(make_seq((16, 8), 0.13)).detach().requires_grad_(True)
+opt_m = torch.optim.Muon([mp], lr=0.02, weight_decay=0.05, momentum=0.95, adjust_lr_fn="original")
+mtgt = torch.cos(make_seq((16, 8), 0.11))
+for _ in range(3):
+    opt_m.zero_grad()
+    F.mse_loss(mp, mtgt).backward()
+    opt_m.step()
+
 torch.cuda.synchronize()
 print(json.dumps({
     "sdpa_fp32": sdpa_fp32.cpu().flatten().tolist()[:64],
@@ -588,6 +597,7 @@ print(json.dumps({
     "rms_out": rms_out.detach().cpu().flatten().tolist(),
     "norm_gx": nx.grad.cpu().flatten().tolist(),
     "adamw_p": p.detach().cpu().flatten().tolist(),
+    "muon_p": mp.detach().cpu().flatten().tolist(),
 }))
 `;
 
@@ -681,6 +691,18 @@ print(json.dumps({
       }
       torch.cuda.synchronize();
       assertCloseArrays(Array.from(p.detach().toTypedArray() as Float32Array), ref['adamw_p']!, 1e-5, 1e-5, 'CUDA fused AdamW');
+
+      // 5. Muon on CUDA (3 steps on 16x8 matrix)
+      using mp = new nn.Parameter(makeSeq([16, 8], 0.13).sin().detach());
+      using optM = new optim.Muon([mp], { lr: 0.02, weightDecay: 0.05, momentum: 0.95, adjustLrFn: 'original' });
+      const mtgt = makeSeq([16, 8], 0.11).cos();
+      for (let s = 0; s < 3; s++) {
+        optM.zeroGrad();
+        F.mseLoss(mp, mtgt).backward();
+        optM.step();
+      }
+      torch.cuda.synchronize();
+      assertCloseArrays(Array.from(mp.detach().toTypedArray() as Float32Array), ref['muon_p']!, 2e-3, 2e-3, 'CUDA Muon');
     });
   });
 });

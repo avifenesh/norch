@@ -648,6 +648,29 @@ export interface NativeFastOps {
     backoffFactor: number,
     growthInterval: number
   ): NativeTensor;
+  zeropowerViaNewtonSchulz(
+    grad: NativeTensor,
+    nsA?: number,
+    nsB?: number,
+    nsC?: number,
+    nsSteps?: number,
+    eps?: number
+  ): NativeTensor;
+  muonStep(
+    params: NativeTensor[],
+    grads: NativeTensor[],
+    momentumBufs: NativeTensor[],
+    lr: number,
+    weightDecay: number,
+    momentum: number,
+    nesterov: boolean,
+    nsA: number,
+    nsB: number,
+    nsC: number,
+    nsSteps: number,
+    eps: number,
+    adjustLrFn?: string | null
+  ): void;
   convTranspose3d(
     input: NativeTensor,
     weight: NativeTensor,

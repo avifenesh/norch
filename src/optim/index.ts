@@ -6,6 +6,17 @@ export {
 } from './optimizer.js';
 export { SGD, type SGDOptions, type SGDParamGroup } from './sgd.js';
 export { Adam, AdamW, type AdamOptions, type AdamParamGroup } from './adam.js';
+export {
+  Muon,
+  zeropowerViaNewtonSchulz,
+  MUON_DEFAULT_NS_COEFFICIENTS,
+  MUON_DEFAULT_NS_STEPS,
+  MUON_DEFAULT_EPS,
+  type MuonOptions,
+  type MuonParamGroup,
+  type MuonAdjustLrFn,
+  type NewtonSchulzOptions,
+} from './muon.js';
 export { RMSprop, type RMSpropOptions, type RMSpropParamGroup } from './rmsprop.js';
 export {
   Adagrad,

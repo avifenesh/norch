@@ -105,6 +105,23 @@ for step in range(2):
     l.backward()
     opt.step()
 
+# 5. Three steps of Muon on tall (6x4) and wide (4x6) 2D weight matrices
+m_tall = torch.sin(torch.arange(24, dtype=torch.float32).reshape(6, 4) * 0.2).detach().requires_grad_(True)
+m_wide = torch.cos(torch.arange(24, dtype=torch.float32).reshape(4, 6) * 0.15).detach().requires_grad_(True)
+opt_muon = torch.optim.Muon(
+    [
+        {"params": [m_tall], "lr": 0.02, "weight_decay": 0.05, "momentum": 0.95, "adjust_lr_fn": "original"},
+        {"params": [m_wide], "lr": 0.01, "weight_decay": 0.1, "momentum": 0.9, "adjust_lr_fn": "match_rms_adamw"},
+    ]
+)
+tgt_t = torch.cos(torch.arange(24, dtype=torch.float32).reshape(6, 4) * 0.1)
+tgt_w = torch.sin(torch.arange(24, dtype=torch.float32).reshape(4, 6) * 0.1)
+for step in range(3):
+    opt_muon.zero_grad()
+    loss_m = F.mse_loss(m_tall @ m_wide, tgt_t @ tgt_w)
+    loss_m.backward()
+    opt_muon.step()
+
 print(json.dumps({
     "loss": loss.item(),
     "x_grad": x.grad.flatten().tolist(),
@@ -117,6 +134,8 @@ print(json.dumps({
     "cw_grad": cw.grad.flatten().tolist(),
     "rn_w_grad": rn_w.grad.flatten().tolist(),
     "adamw_p": p.detach().flatten().tolist(),
+    "muon_tall": m_tall.detach().flatten().tolist(),
+    "muon_wide": m_wide.detach().flatten().tolist(),
 }))
 `;
 
@@ -134,6 +153,8 @@ print(json.dumps({
       cw_grad: number[];
       rn_w_grad: number[];
       adamw_p: number[];
+      muon_tall: number[];
+      muon_wide: number[];
     };
 
     torch.tidy(() => {
@@ -202,6 +223,27 @@ print(json.dumps({
         opt.step();
       }
       assertCloseArray(Array.from(p.toTypedArray() as Float32Array), ref.adamw_p, 1e-5, 'adamw.p');
+
+      // 5. Three steps of Muon (tall + wide, original + match_rms_adamw)
+      using mTall = new torch.nn.Parameter(
+        torch.arange(0, 24, 1, { dtype: torch.float32 }).reshape(6, 4).mul(0.2).sin().detach()
+      );
+      using mWide = new torch.nn.Parameter(
+        torch.arange(0, 24, 1, { dtype: torch.float32 }).reshape(4, 6).mul(0.15).cos().detach()
+      );
+      using optMuon = new optim.Muon([
+        { params: [mTall], lr: 0.02, weightDecay: 0.05, momentum: 0.95, adjustLrFn: 'original' },
+        { params: [mWide], lr: 0.01, weightDecay: 0.1, momentum: 0.9, adjustLrFn: 'match_rms_adamw' },
+      ]);
+      const tgtT = torch.arange(0, 24, 1, { dtype: torch.float32 }).reshape(6, 4).mul(0.1).cos();
+      const tgtW = torch.arange(0, 24, 1, { dtype: torch.float32 }).reshape(4, 6).mul(0.1).sin();
+      for (let step = 0; step < 3; step++) {
+        optMuon.zeroGrad();
+        F.mseLoss(mTall.matmul(mWide), tgtT.matmul(tgtW)).backward();
+        optMuon.step();
+      }
+      assertCloseArray(Array.from(mTall.toTypedArray() as Float32Array), ref.muon_tall, 1e-4, 'muon.tall');
+      assertCloseArray(Array.from(mWide.toTypedArray() as Float32Array), ref.muon_wide, 1e-4, 'muon.wide');
     });
   });
 });

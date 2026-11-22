@@ -1,8 +1,10 @@
 #include "norch/ops_fast.hpp"
 
 #include <ATen/ATen.h>
+#include <c10/core/GradMode.h>
 #include <c10/core/ScalarType.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -1667,6 +1669,106 @@ Napi::Value AmpUpdateScaleOp(const Napi::CallbackInfo& info) {
   });
 }
 
+[[nodiscard]] at::Tensor ZeropowerViaNewtonSchulz(
+    const at::Tensor& grad,
+    double ns_a,
+    double ns_b,
+    double ns_c,
+    std::int64_t ns_steps,
+    double eps) {
+  TORCH_CHECK(grad.dim() == 2, "Muon Newton-Schulz expects a 2D matrix, got dim=", grad.dim());
+  TORCH_CHECK(ns_steps >= 0 && ns_steps < 100, "nsSteps must be in [0, 99], got ", ns_steps);
+
+  at::Tensor ortho = grad.to(at::kBFloat16, /*non_blocking=*/false, /*copy=*/true);
+  const bool transposed = grad.size(0) > grad.size(1);
+  if (transposed) {
+    ortho = ortho.t();
+  }
+  ortho.div_(ortho.norm().clamp_min(eps));
+  for (std::int64_t step = 0; step < ns_steps; ++step) {
+    const auto gram = at::mm(ortho, ortho.t());
+    const auto gram_update = at::addmm(gram, gram, gram, /*beta=*/ns_b, /*alpha=*/ns_c);
+    ortho = at::addmm(ortho, gram_update, ortho, /*beta=*/ns_a, /*alpha=*/1.0);
+  }
+  if (transposed) {
+    ortho = ortho.t();
+  }
+  return ortho;
+}
+
+Napi::Value ZeropowerViaNewtonSchulzOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const c10::NoGradGuard no_grad;
+    const auto& grad = TensorWrap::UnwrapTensor(env, info[0]);
+    const double ns_a = info.Length() >= 2 ? info[1].As<Napi::Number>().DoubleValue() : 3.4445;
+    const double ns_b = info.Length() >= 3 ? info[2].As<Napi::Number>().DoubleValue() : -4.7750;
+    const double ns_c = info.Length() >= 4 ? info[3].As<Napi::Number>().DoubleValue() : 2.0315;
+    const auto ns_steps = info.Length() >= 5 ? info[4].As<Napi::Number>().Int64Value() : 5;
+    const double eps = info.Length() >= 6 ? info[5].As<Napi::Number>().DoubleValue() : 1e-7;
+    return TensorWrap::NewInstance(
+        env, ZeropowerViaNewtonSchulz(grad, ns_a, ns_b, ns_c, ns_steps, eps));
+  });
+}
+
+Napi::Value MuonStepOp(const Napi::CallbackInfo& info) {
+  const Napi::Env env = info.Env();
+  return GuardNapi(env, [&]() -> Napi::Value {
+    const c10::NoGradGuard no_grad;
+    auto params = ParseTensorList(env, info[0]);
+    auto grads = ParseTensorList(env, info[1]);
+    auto momentum_bufs = ParseTensorList(env, info[2]);
+    const double lr = info[3].As<Napi::Number>().DoubleValue();
+    const double weight_decay = info[4].As<Napi::Number>().DoubleValue();
+    const double momentum = info[5].As<Napi::Number>().DoubleValue();
+    const bool nesterov = info[6].ToBoolean().Value();
+    const double ns_a = info[7].As<Napi::Number>().DoubleValue();
+    const double ns_b = info[8].As<Napi::Number>().DoubleValue();
+    const double ns_c = info[9].As<Napi::Number>().DoubleValue();
+    const auto ns_steps = info[10].As<Napi::Number>().Int64Value();
+    const double eps = info[11].As<Napi::Number>().DoubleValue();
+    const std::string adjust_lr_fn =
+        (info.Length() >= 13 && info[12].IsString()) ? info[12].As<Napi::String>().Utf8Value()
+                                                     : "original";
+
+    TORCH_CHECK(
+        params.size() == grads.size() && params.size() == momentum_bufs.size(),
+        "muonStep: params, grads, and momentumBufs must have identical lengths");
+
+    for (std::size_t i = 0; i < params.size(); ++i) {
+      auto& param = params[i];
+      const auto& grad = grads[i];
+      auto& buf = momentum_bufs[i];
+      TORCH_CHECK(param.dim() == 2 && grad.dim() == 2, "Muon only supports 2D parameters");
+      TORCH_CHECK(!param.is_complex(), "Muon does not support complex parameters");
+      TORCH_CHECK(!grad.is_sparse(), "Muon does not support sparse gradients");
+
+      buf.lerp_(grad, 1.0 - momentum);
+      const at::Tensor update_in = nesterov ? at::lerp(grad, buf, momentum) : buf;
+      const at::Tensor ortho =
+          ZeropowerViaNewtonSchulz(update_in, ns_a, ns_b, ns_c, ns_steps, eps);
+
+      const auto rows = static_cast<double>(param.size(0));
+      const auto cols = static_cast<double>(param.size(1));
+      double adjusted_ratio = 1.0;
+      if (adjust_lr_fn.empty() || adjust_lr_fn == "original") {
+        adjusted_ratio = std::sqrt(std::max(1.0, rows / cols));
+      } else if (adjust_lr_fn == "match_rms_adamw") {
+        adjusted_ratio = 0.2 * std::sqrt(std::max(rows, cols));
+      } else if (adjust_lr_fn == "spectral_unclamped") {
+        adjusted_ratio = std::sqrt(rows / cols);
+      } else {
+        throw Napi::RangeError::New(env, "Unsupported Muon adjustLrFn: " + adjust_lr_fn);
+      }
+
+      const double adjusted_lr = lr * adjusted_ratio;
+      param.mul_(1.0 - lr * weight_decay);
+      param.add_(ortho, /*alpha=*/-adjusted_lr);
+    }
+    return env.Undefined();
+  });
+}
+
 Napi::Value ConvTranspose3dOp(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
@@ -2058,6 +2160,8 @@ void RegisterFastOps(Napi::Env env, Napi::Object exports) {
   ops.Set("sparseMm", Napi::Function::New(env, SparseMmOp));
   ops.Set("ampUnscaleAndCheck", Napi::Function::New(env, AmpUnscaleAndCheckOp));
   ops.Set("ampUpdateScale", Napi::Function::New(env, AmpUpdateScaleOp));
+  ops.Set("zeropowerViaNewtonSchulz", Napi::Function::New(env, ZeropowerViaNewtonSchulzOp));
+  ops.Set("muonStep", Napi::Function::New(env, MuonStepOp));
   ops.Set("convTranspose3d", Napi::Function::New(env, ConvTranspose3dOp));
   ops.Set("maxPool1d", Napi::Function::New(env, MaxPool1dOp));
   ops.Set("maxPool3d", Napi::Function::New(env, MaxPool3dOp));
