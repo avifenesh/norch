@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parentPort, workerData } from 'node:worker_threads';
 import type { DType } from '../dtype.js';
 
@@ -94,7 +96,10 @@ port.on('message', async (msg: IncomingMessage) => {
       port.postMessage({ type: 'result', batchId, mode: 'tensor-dataset', columns: columnsOut }, transfers);
     } else {
       if (!customModPromise) {
-        customModPromise = import(config.workerScript);
+        const specifier = config.workerScript.startsWith('file://')
+          ? config.workerScript
+          : pathToFileURL(path.resolve(config.workerScript)).href;
+        customModPromise = import(specifier);
       }
       const mod = await customModPromise;
       let payload: unknown;

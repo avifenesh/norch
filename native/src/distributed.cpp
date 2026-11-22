@@ -540,8 +540,21 @@ class NorchStoreBackend final : public c10d::Backend {
   tcp_opts.numWorkers = static_cast<std::size_t>(world_size);
   tcp_opts.waitWorkers = true;
   tcp_opts.timeout = std::chrono::milliseconds(timeout_ms);
-  tcp_opts.useLibUV = true;
+#ifdef _WIN32
+  tcp_opts.useLibUV = false;
   return c10::make_intrusive<c10d::TCPStore>(host, tcp_opts);
+#else
+  tcp_opts.useLibUV = true;
+  try {
+    return c10::make_intrusive<c10d::TCPStore>(host, tcp_opts);
+  } catch (const c10::Error& err) {
+    if (std::string(err.what()).find("libuv") != std::string::npos) {
+      tcp_opts.useLibUV = false;
+      return c10::make_intrusive<c10d::TCPStore>(host, tcp_opts);
+    }
+    throw;
+  }
+#endif
 }
 
 class ProcessGroupWrap : public Napi::ObjectWrap<ProcessGroupWrap> {
