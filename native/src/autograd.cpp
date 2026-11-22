@@ -64,6 +64,54 @@ template <typename NodeT>
   }
 }
 
+template <typename NodePtrT>
+[[nodiscard]] auto WrapOutputsCompat(
+    const torch::autograd::variable_list& input_vars,
+    const std::unordered_set<at::TensorImpl*>& non_diff,
+    const std::unordered_set<at::TensorImpl*>& dirty_inputs,
+    const std::vector<std::optional<torch::autograd::Variable>>& raw_outputs,
+    const NodePtrT& node,
+    const torch::autograd::_jvp_fn_t& jvp_fn,
+    const std::unordered_set<at::TensorImpl*>& empty_set,
+    const torch::autograd::_view_as_self_fn_t& view_as_self_fn) {
+  NodePtrT attached_node;
+  if constexpr (requires {
+                  torch::autograd::_wrap_outputs(
+                      input_vars,
+                      non_diff,
+                      dirty_inputs,
+                      raw_outputs,
+                      node,
+                      jvp_fn,
+                      empty_set,
+                      view_as_self_fn,
+                      false,
+                      attached_node);
+                }) {
+    return torch::autograd::_wrap_outputs(
+        input_vars,
+        non_diff,
+        dirty_inputs,
+        raw_outputs,
+        node,
+        jvp_fn,
+        empty_set,
+        view_as_self_fn,
+        /*pure_view=*/false,
+        attached_node);
+  } else {
+    return torch::autograd::_wrap_outputs(
+        input_vars,
+        non_diff,
+        dirty_inputs,
+        raw_outputs,
+        node,
+        jvp_fn,
+        empty_set,
+        view_as_self_fn);
+  }
+}
+
 [[nodiscard]] std::vector<std::unique_ptr<c10::InferenceMode>>& InferenceModeStack() {
   static thread_local std::vector<std::unique_ptr<c10::InferenceMode>> stack;
   return stack;
@@ -529,20 +577,19 @@ Napi::Value ApplyCustomAutograd(const Napi::CallbackInfo& info) {
       return x.view_as(x);
     };
 
-    AutogradNodePtr<torch::autograd::Node> attached_node;
     const std::unordered_set<at::TensorImpl*> empty_set;
-    auto wrapped_outputs = torch::autograd::_wrap_outputs(
+    const AutogradNodePtr<torch::autograd::Node> node_arg =
+        is_executable ? AutogradNodePtr<torch::autograd::Node>(node)
+                      : AutogradNodePtr<torch::autograd::Node>{};
+    auto wrapped_outputs = WrapOutputsCompat(
         input_vars,
         non_diff,
         dirty_inputs,
         raw_outputs,
-        is_executable ? AutogradNodePtr<torch::autograd::Node>(node)
-                      : AutogradNodePtr<torch::autograd::Node>{},
+        node_arg,
         jvp_fn,
         empty_set,
-        view_as_self_fn,
-        /*pure_view=*/false,
-        attached_node);
+        view_as_self_fn);
 
     if (is_executable) {
       if (ctx_obj.Has("_materializeGrads") && ctx_obj.Get("_materializeGrads").IsBoolean()) {

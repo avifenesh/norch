@@ -71,11 +71,34 @@ Napi::Value FromDlpackOp(const Napi::CallbackInfo& info) {
   });
 }
 
+[[nodiscard]] DLDevice TorchDeviceToDLDevice(const c10::Device& dev) {
+  DLDevice out{};
+  out.device_id = dev.has_index() ? static_cast<std::int32_t>(dev.index()) : 0;
+  switch (dev.type()) {
+    case c10::DeviceType::CPU:
+      out.device_type = kDLCPU;
+      out.device_id = 0;
+      break;
+    case c10::DeviceType::CUDA:
+      out.device_type = kDLCUDA;
+      break;
+    case c10::DeviceType::MPS:
+      out.device_type = kDLMetal;
+      break;
+    case c10::DeviceType::XPU:
+      out.device_type = kDLOneAPI;
+      break;
+    default:
+      TORCH_CHECK(false, "Unsupported DLPack device type: ", dev.str());
+  }
+  return out;
+}
+
 Napi::Value DlpackDeviceOp(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
     const auto& t = TensorWrap::UnwrapTensor(env, info[0]);
-    const DLDevice dev = at::torchDeviceToDLDevice(t.device());
+    const DLDevice dev = TorchDeviceToDLDevice(t.device());
     auto arr = Napi::Array::New(env, 2);
     arr.Set(0U, Napi::Number::New(env, static_cast<double>(dev.device_type)));
     arr.Set(1U, Napi::Number::New(env, static_cast<double>(dev.device_id)));

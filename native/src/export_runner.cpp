@@ -4,9 +4,11 @@
 #include <torch/csrc/inductor/aoti_package/model_package_loader.h>
 #include <torch/script.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -49,8 +51,20 @@ class AotiModelWrap : public Napi::ObjectWrap<AotiModelWrap> {
           (info.Length() >= 3 && info[2].IsNumber())
               ? static_cast<c10::DeviceIndex>(info[2].As<Napi::Number>().Int32Value())
               : static_cast<c10::DeviceIndex>(-1);
-      loader_ = std::make_unique<torch::inductor::AOTIModelPackageLoader>(
-          pkg_path, model_name, /*run_single_threaded=*/false, /*num_runners=*/1, device_index);
+      if constexpr (std::is_constructible_v<
+                        torch::inductor::AOTIModelPackageLoader,
+                        const std::string&,
+                        const std::string&,
+                        bool,
+                        std::size_t,
+                        c10::DeviceIndex>) {
+        loader_ = std::make_unique<torch::inductor::AOTIModelPackageLoader>(
+            pkg_path, model_name, /*run_single_threaded=*/false, /*num_runners=*/1, device_index);
+      } else {
+        (void)device_index;
+        loader_ = std::make_unique<torch::inductor::AOTIModelPackageLoader>(
+            pkg_path, model_name, /*run_single_threaded=*/false, /*num_runners=*/1);
+      }
     } catch (const Napi::Error& err) {
       err.ThrowAsJavaScriptException();
     } catch (const c10::Error& err) {

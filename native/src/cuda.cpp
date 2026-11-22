@@ -387,14 +387,14 @@ class CudaGraphWrap : public Napi::ObjectWrap<CudaGraphWrap> {
 Napi::Value CudaIsAvailable(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
-    return Napi::Boolean::New(env, at::cuda::is_available());
+    return Napi::Boolean::New(env, at::hasCUDA());
   });
 }
 
 Napi::Value CudaDeviceCount(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
   return GuardNapi(env, [&]() -> Napi::Value {
-    return Napi::Number::New(env, static_cast<double>(at::cuda::device_count()));
+    return Napi::Number::New(env, static_cast<double>(at::getNumGPUs()));
   });
 }
 
